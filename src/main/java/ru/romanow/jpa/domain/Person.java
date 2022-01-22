@@ -32,8 +32,7 @@ public class Person {
     @Column(name = "address_id", updatable = false, insertable = false)
     private Integer addressId;
 
-    @OneToMany(orphanRemoval = true)
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL, )
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
     private Address address;
 
