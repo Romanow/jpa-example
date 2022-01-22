@@ -24,4 +24,13 @@ public class PersonServiceImpl
                 .map(personMapper::toModel)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonResponse> findByAddressId(int id) {
+        return personRepository.findWithAddress(id)
+                .stream()
+                .map(personMapper::toModel)
+                .collect(Collectors.toList());
+    }
 }

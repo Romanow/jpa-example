@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface PersonService {
     List<PersonResponse> findAll();
+
+    List<PersonResponse> findByAddressId(int id);
 }
