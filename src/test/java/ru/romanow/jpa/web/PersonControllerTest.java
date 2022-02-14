@@ -162,6 +162,10 @@ class PersonControllerTest {
                                 )
                         )
                 );
+
+        for (var role : person.getRoles()) {
+            assertThat(entityDao.findById(role.getId(), Role.class).isPresent()).isTrue();
+        }
     }
 
     @Test
