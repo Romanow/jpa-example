@@ -29,7 +29,7 @@ public final class EntityBuilder {
                         .collect(toSet()))
                 .setAuthorities(range(0, roleCount)
                         .mapToObj(i -> new AuthorityInfo().setName(randomAlphabetic(4)).setPriority(nextInt(1, 10)))
-                        .collect(toList()));
+                        .collect(toSet()));
     }
 
     @NotNull
@@ -54,7 +54,7 @@ public final class EntityBuilder {
                         .collect(toSet()))
                 .setAuthorities(range(0, authorityCount)
                         .mapToObj(i -> new Authority().setName(randomAlphabetic(4)).setPriority(nextInt(1, 10)))
-                        .collect(toList()));
+                        .collect(toSet()));
     }
 
     @NotNull

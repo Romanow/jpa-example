@@ -15,5 +15,5 @@ public class PersonModifyRequest {
     private Integer age;
     private AddressInfo address;
     private Set<String> roles;
-    private List<AuthorityInfo> authorities;
+    private Set<AuthorityInfo> authorities;
 }
