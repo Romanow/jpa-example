@@ -2,8 +2,10 @@ package ru.romanow.jpa.domain;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import javax.persistence.*;
+import java.util.List;
 import java.util.Objects;
 import java.util.StringJoiner;
 
@@ -33,8 +35,8 @@ public class Address {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Address address1 = (Address) o;
-        return Objects.equals(city, address1.city) && Objects.equals(country, address1.country) && Objects.equals(street, address1.street) && Objects.equals(address, address1.address);
+        Address other = (Address) o;
+        return Objects.equals(city, other.city) && Objects.equals(country, other.country) && Objects.equals(street, other.street) && Objects.equals(address, other.address);
     }
 
     @Override
@@ -44,12 +46,12 @@ public class Address {
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", Address.class.getSimpleName() + "[", "]")
-                .add("id=" + id)
-                .add("city='" + city + "'")
-                .add("country='" + country + "'")
-                .add("street='" + street + "'")
-                .add("address='" + address + "'")
+        return new ToStringBuilder(this)
+                .append("id", id)
+                .append("city", city)
+                .append("country", country)
+                .append("street", street)
+                .append("address", address)
                 .toString();
     }
 }

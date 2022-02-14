@@ -2,10 +2,12 @@ package ru.romanow.jpa.domain;
 
 import lombok.Data;
 import lombok.experimental.Accessors;
+import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import javax.persistence.*;
+import java.util.List;
 import java.util.Objects;
-import java.util.StringJoiner;
+import java.util.Set;
 
 @Data
 @Accessors(chain = true)
@@ -32,9 +34,21 @@ public class Person {
     @Column(name = "address_id", updatable = false, insertable = false)
     private Integer addressId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE })
     @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
     private Address address;
+
+    @ManyToMany(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST })
+    @JoinTable(
+            name = "person_roles",
+            joinColumns = @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_person_roles_person_id")),
+            inverseJoinColumns = @JoinColumn(name = "role_id", foreignKey = @ForeignKey(name = "fk_person_roles_role_id"))
+    )
+    private Set<Role> roles;
+
+    @OneToMany(cascade = { CascadeType.PERSIST })
+    @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_authority_person_id"))
+    private List<Authority> authorities;
 
     @Override
     public boolean equals(Object o) {
@@ -51,12 +65,12 @@ public class Person {
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", Person.class.getSimpleName() + "[", "]")
-                .add("id=" + id)
-                .add("firstName='" + firstName + "'")
-                .add("middleName='" + middleName + "'")
-                .add("lastName='" + lastName + "'")
-                .add("age=" + age)
+        return new ToStringBuilder(this)
+                .append("id", id)
+                .append("firstName", firstName)
+                .append("middleName", middleName)
+                .append("lastName", lastName)
+                .append("age", age)
                 .toString();
     }
 }

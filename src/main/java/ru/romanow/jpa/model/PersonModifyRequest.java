@@ -8,8 +8,7 @@ import java.util.Set;
 
 @Data
 @Accessors(chain = true)
-public class PersonResponse {
-    private Integer id;
+public class PersonModifyRequest {
     private String firstName;
     private String middleName;
     private String lastName;

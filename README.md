@@ -210,6 +210,15 @@ spring.jpa.hibernate.ddl-auto=validate
 операции: `{ CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.DETACH }`. Тип `CascadeType.ALL`
 включает `CascadeType.REMOVE`, который каскадно удаляет все связаные записи.
 
+Для обновления возникнет ошибка:
+
+> org.springframework.dao.InvalidDataAccessApiUsageException: org.hibernate.TransientPropertyValueException:
+> object references an unsaved transient instance - save the transient instance before flushing :
+> ru.romanow.jpa.domain.Person.address -> ru.romanow.jpa.domain.Address; nested exception is
+> java.lang.IllegalStateException: org.hibernate.TransientPropertyValueException: object references an unsaved
+> transient instance - save the transient instance before flushing : ru.romanow.jpa.domain.Person.address ->
+> ru.romanow.jpa.domain.Address
+
 Так же при удалении объекта могут потребоваться удалять все подчиненные сущности, а значит нужно будет
 использовать `orphanRemoval = true`.
 

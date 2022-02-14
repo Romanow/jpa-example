@@ -8,6 +8,7 @@ import javax.persistence.Column;
 @Data
 @Accessors(chain = true)
 public class AddressInfo {
+    private Integer id;
     private String city;
     private String country;
     private String street;

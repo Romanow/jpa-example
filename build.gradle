@@ -13,6 +13,7 @@ idea {
 }
 
 ext {
+    gsonVersion = "2.9.0"
     mapstructVersion = "1.4.2.Final"
     jetbrainsAnnotationsVersion = "22.0.0"
 }
@@ -32,18 +33,19 @@ dependencies {
 
     implementation "org.jetbrains:annotations:$jetbrainsAnnotationsVersion"
     implementation "org.mapstruct:mapstruct:$mapstructVersion"
+    implementation "org.apache.commons:commons-lang3"
 
     compileOnly "org.projectlombok:lombok"
     annotationProcessor "org.projectlombok:lombok"
     annotationProcessor "org.mapstruct:mapstruct-processor:$mapstructVersion"
+
+    testImplementation "com.h2database:h2"
+    testImplementation "com.google.code.gson:gson:$gsonVersion"
+    testImplementation "org.springframework.boot:spring-boot-starter-test"
 }
 
 test {
     useJUnitPlatform()
-}
-
-springBoot {
-    buildInfo()
 }
 
 bootJar {
