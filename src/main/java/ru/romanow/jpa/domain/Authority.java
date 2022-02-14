@@ -3,7 +3,6 @@ package ru.romanow.jpa.domain;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.hibernate.annotations.Cascade;
 
 import javax.persistence.*;
 import java.util.Objects;
@@ -25,7 +24,6 @@ public class Authority {
     private Integer priority;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_authority_person_id"))
     private Person person;
 
     @Override

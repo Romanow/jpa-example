@@ -22,8 +22,8 @@ import ru.romanow.jpa.repository.PersonRepository;
 import ru.romanow.jpa.web.dao.EntityDao;
 
 import java.util.List;
-import java.util.Set;
 
+import static java.util.Set.of;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.boot.jdbc.EmbeddedDatabaseConnection.H2;
@@ -114,19 +114,24 @@ class PersonControllerTest {
                 .andExpect(jsonPath("$.authorities[*].name").value(containsInAnyOrder(authorities)));
     }
 
-    @Disabled
     @Test
     void testUpdate()
             throws Exception {
         var gson = new Gson();
-        var person = personRepository.save(buildPerson(2, 2));
+        var person = personRepository.save(buildPerson(2, 3));
         var initialRoles = List.copyOf(person.getRoles());
-        var roles = Set.of("Architect", "DevOps", "Developer");
+        var initialAuthorities = List.copyOf(person.getAuthorities());
+        var roles = of("Architect", "DevOps", initialRoles.get(1).getName());
         var request = new PersonModifyRequest()
                 .setFirstName("Alex")
                 .setLastName("Romanow")
                 .setAddress(new AddressInfo().setStreet("Molostov st."))
-                .setRoles(roles);
+                .setRoles(roles)
+                .setAuthorities(of(
+                        new AuthorityInfo().setId(initialAuthorities.get(0).getId()).setName("EAT").setPriority(1),
+                        new AuthorityInfo().setId(initialAuthorities.get(1).getId()).setName("SLEEP").setPriority(2),
+                        new AuthorityInfo().setName("RIDE").setPriority(3)
+                ));
 
         mockMvc.perform(patch("/api/v1/persons/{id}", person.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -145,21 +150,27 @@ class PersonControllerTest {
                                 containsInAnyOrder(
                                         "Architect",
                                         "DevOps",
-                                        "Developer",
                                         initialRoles.get(0).getName(),
                                         initialRoles.get(1).getName()
+                                )
+                        )
+                )
+                .andExpect(jsonPath("$.authorities[*].name")
+                        .value(
+                                containsInAnyOrder(
+                                        "EAT", "SLEEP", "RIDE", initialAuthorities.get(2).getName()
                                 )
                         )
                 );
     }
 
-    @Disabled
     @Test
     void testFullUpdate()
             throws Exception {
         var gson = new Gson();
-        var person = personRepository.save(buildPerson(2, 2));
-        var roles = Set.of("Architect", "DevOps", "Developer");
+        var person = personRepository.save(buildPerson(2, 3));
+        var roles = of("Architect", "DevOps", "Developer");
+        var initialAuthorities = List.copyOf(person.getAuthorities());
         var request = buildPersonModifyRequest(2)
                 .setFirstName("Alex")
                 .setMiddleName(null)
@@ -168,7 +179,12 @@ class PersonControllerTest {
                         .setCountry("USA")
                         .setCity("NY")
                         .setAddress("Molostov st."))
-                .setRoles(roles);
+                .setRoles(roles)
+                .setAuthorities(of(
+                        new AuthorityInfo().setId(initialAuthorities.get(0).getId()).setName("EAT").setPriority(1),
+                        new AuthorityInfo().setId(initialAuthorities.get(1).getId()).setName("SLEEP").setPriority(2),
+                        new AuthorityInfo().setName("RIDE").setPriority(3)
+                ));;
 
         mockMvc.perform(put("/api/v1/persons/{id}", person.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -182,19 +198,16 @@ class PersonControllerTest {
                 .andExpect(jsonPath("$.address.city").value(request.getAddress().getCity()))
                 .andExpect(jsonPath("$.address.street").value(request.getAddress().getStreet()))
                 .andExpect(jsonPath("$.address.address").value(request.getAddress().getAddress()))
-                .andExpect(jsonPath("$.roles[*]")
-                        .value(
-                                containsInAnyOrder(
-                                        "Architect",
-                                        "DevOps",
-                                        "Developer"
-                                )
-                        )
-                );
+                .andExpect(jsonPath("$.roles[*]").value(containsInAnyOrder("Architect", "DevOps", "Developer")))
+                .andExpect(jsonPath("$.authorities[*].name").value(containsInAnyOrder("EAT", "SLEEP", "RIDE")));
 
         for (var role : person.getRoles()) {
             assertThat(entityDao.findById(role.getId(), Role.class).isPresent()).isTrue();
         }
+        for (int i = 0; i < 2; i++) {
+            assertThat(entityDao.findById(initialAuthorities.get(i).getId(), Authority.class).isPresent()).isTrue();
+        }
+        assertThat(entityDao.findById(initialAuthorities.get(2).getId(), Authority.class).isPresent()).isFalse();
     }
 
     @Test

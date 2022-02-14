@@ -5,7 +5,6 @@ import lombok.experimental.Accessors;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import javax.persistence.*;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -38,7 +37,7 @@ public class Person {
     @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
     private Address address;
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST })
+    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinTable(
             name = "person_roles",
             joinColumns = @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_person_roles_person_id")),
@@ -46,9 +45,9 @@ public class Person {
     )
     private Set<Role> roles;
 
-    @OneToMany(cascade = { CascadeType.PERSIST })
+    @OneToMany(cascade = { CascadeType.PERSIST, CascadeType.REMOVE }, orphanRemoval = true)
     @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_authority_person_id"))
-    private List<Authority> authorities;
+    private Set<Authority> authorities;
 
     @Override
     public boolean equals(Object o) {

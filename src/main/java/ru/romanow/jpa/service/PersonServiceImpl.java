@@ -9,14 +9,15 @@ import ru.romanow.jpa.domain.Authority;
 import ru.romanow.jpa.domain.Person;
 import ru.romanow.jpa.domain.Role;
 import ru.romanow.jpa.mapper.AddressMapper;
+import ru.romanow.jpa.mapper.AuthorityMapper;
 import ru.romanow.jpa.mapper.PersonMapper;
-import ru.romanow.jpa.mapper.RoleMapper;
 import ru.romanow.jpa.model.PersonModifyRequest;
 import ru.romanow.jpa.model.PersonResponse;
 import ru.romanow.jpa.repository.PersonRepository;
 import ru.romanow.jpa.repository.RoleRepository;
 
 import javax.persistence.EntityNotFoundException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -32,7 +33,7 @@ public class PersonServiceImpl
     private final RoleRepository roleRepository;
     private final PersonMapper personMapper;
     private final AddressMapper addressMapper;
-    private final RoleMapper roleMapper;
+    private final AuthorityMapper authorityMapper;
 
     @NotNull
     @Override
@@ -58,12 +59,12 @@ public class PersonServiceImpl
                         .orElse(new Role().setName(r)))
                 .collect(toSet());
 
-        final List<Authority> authorities = request.getAuthorities()
+        final Set<Authority> authorities = request.getAuthorities()
                 .stream()
                 .map(a -> new Authority()
                         .setName(a.getName())
                         .setPriority(a.getPriority()))
-                .collect(toList());
+                .collect(toSet());
 
         final Person person = new Person()
                 .setFirstName(request.getFirstName())
@@ -73,7 +74,6 @@ public class PersonServiceImpl
                 .setAddress(address)
                 .setRoles(roles)
                 .setAuthorities(authorities);
-
 
         return personRepository.save(person).getId();
     }
@@ -88,16 +88,38 @@ public class PersonServiceImpl
         personMapper.update(request, person);
         addressMapper.update(request.getAddress(), person.getAddress());
         if (request.getRoles() != null) {
-            final Map<String, Role> existingRoles = person.getRoles().stream().collect(toMap(Role::getName, identity()));
-            for (var role : request.getRoles()) {
-                if (existingRoles.containsKey(role)) {
-                    final Role existingRole = existingRoles.get(role);
-                    roleMapper.update(role, existingRole);
-                } else {
-                    person.getRoles().add(new Role().setName(role));
+            var existingRoles = person
+                    .getRoles()
+                    .stream()
+                    .collect(toMap(Role::getName, identity()));
+            for (var roleName : request.getRoles()) {
+                if (!existingRoles.containsKey(roleName)) {
+                    var role = roleRepository
+                            .findByName(roleName)
+                            .orElse(new Role().setName(roleName));
+                    person.getRoles().add(role);
                 }
             }
         }
+
+        if (request.getAuthorities() != null) {
+            var existingAuthorities = person
+                    .getAuthorities()
+                    .stream()
+                    .collect(toMap(Authority::getId, identity()));
+            for (var authority: request.getAuthorities()) {
+                var authorityId = authority.getId();
+                if (authorityId != null && existingAuthorities.containsKey(authorityId)) {
+                    var existingAuthority = existingAuthorities.get(authorityId);
+                    authorityMapper.update(authority, existingAuthority);
+                } else {
+                    var newAuthority = new Authority();
+                    authorityMapper.fullUpdate(authority, newAuthority);
+                    person.getAuthorities().add(newAuthority);
+                }
+            }
+        }
+
         return personMapper.toModel(person);
     }
 
@@ -111,13 +133,45 @@ public class PersonServiceImpl
         personMapper.fullUpdate(request, person);
         addressMapper.fullUpdate(request.getAddress(), person.getAddress());
 
-        final Set<Role> roles = person.getRoles();
-        roles.clear();
-
         if (request.getRoles() != null) {
-            for (var role : request.getRoles()) {
-                roles.add(new Role().setName(role));
+            var newRoles = new HashSet<Role>();
+            var existingRoles = person
+                    .getRoles()
+                    .stream()
+                    .collect(toMap(Role::getName, identity()));
+            for (var roleName : request.getRoles()) {
+                if (existingRoles.containsKey(roleName)) {
+                    newRoles.add(existingRoles.get(roleName));
+                } else {
+                    var role = roleRepository
+                            .findByName(roleName)
+                            .orElse(new Role().setName(roleName));
+                    newRoles.add(role);
+                }
             }
+            person.setRoles(newRoles);
+        }
+
+        if (request.getAuthorities() != null) {
+            var newAuthorities = new HashSet<Authority>();
+            var existingAuthorities = person
+                    .getAuthorities()
+                    .stream()
+                    .collect(toMap(Authority::getId, identity()));
+            for (var authority: request.getAuthorities()) {
+                var authorityId = authority.getId();
+                if (authorityId != null && existingAuthorities.containsKey(authorityId)) {
+                    var existingAuthority = existingAuthorities.get(authorityId);
+                    authorityMapper.update(authority, existingAuthority);
+                    newAuthorities.add(existingAuthority);
+                } else {
+                    var newAuthority = new Authority();
+                    authorityMapper.fullUpdate(authority, newAuthority);
+                    newAuthorities.add(newAuthority);
+                }
+            }
+            person.getAuthorities().clear();
+            person.getAuthorities().addAll(newAuthorities);
         }
 
         return personMapper.toModel(person);
