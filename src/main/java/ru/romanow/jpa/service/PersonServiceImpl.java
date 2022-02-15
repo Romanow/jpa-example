@@ -19,7 +19,6 @@ import ru.romanow.jpa.repository.RoleRepository;
 import javax.persistence.EntityNotFoundException;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static java.util.function.Function.identity;
@@ -107,7 +106,7 @@ public class PersonServiceImpl
                     .getAuthorities()
                     .stream()
                     .collect(toMap(Authority::getId, identity()));
-            for (var authority: request.getAuthorities()) {
+            for (var authority : request.getAuthorities()) {
                 var authorityId = authority.getId();
                 if (authorityId != null && existingAuthorities.containsKey(authorityId)) {
                     var existingAuthority = existingAuthorities.get(authorityId);
@@ -158,7 +157,7 @@ public class PersonServiceImpl
                     .getAuthorities()
                     .stream()
                     .collect(toMap(Authority::getId, identity()));
-            for (var authority: request.getAuthorities()) {
+            for (var authority : request.getAuthorities()) {
                 var authorityId = authority.getId();
                 if (authorityId != null && existingAuthorities.containsKey(authorityId)) {
                     var existingAuthority = existingAuthorities.get(authorityId);
