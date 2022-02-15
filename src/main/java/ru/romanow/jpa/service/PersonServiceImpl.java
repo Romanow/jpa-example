@@ -162,7 +162,7 @@ public class PersonServiceImpl
                 var authorityId = authority.getId();
                 if (authorityId != null && existingAuthorities.containsKey(authorityId)) {
                     var existingAuthority = existingAuthorities.get(authorityId);
-                    authorityMapper.update(authority, existingAuthority);
+                    authorityMapper.fullUpdate(authority, existingAuthority);
                     newAuthorities.add(existingAuthority);
                 } else {
                     var newAuthority = new Authority();
