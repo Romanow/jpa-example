@@ -1,14 +1,17 @@
 package ru.romanow.jpa.domain;
 
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.Accessors;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import javax.persistence.*;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-@Data
+@Getter
+@Setter
 @Accessors(chain = true)
 @Entity
 @Table(name = "person")
@@ -33,7 +36,7 @@ public class Person {
     @Column(name = "address_id", updatable = false, insertable = false)
     private Integer addressId;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE })
+    @ManyToOne(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.REMOVE})
     @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
     private Address address;
 
@@ -45,9 +48,17 @@ public class Person {
     )
     private Set<Role> roles;
 
-    @OneToMany(cascade = { CascadeType.PERSIST, CascadeType.REMOVE }, orphanRemoval = true)
+    @OneToMany(
+            cascade = {
+                    CascadeType.PERSIST,
+                    CascadeType.DETACH,
+                    CascadeType.MERGE,
+                    CascadeType.REFRESH
+            },
+            orphanRemoval = true)
     @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_authority_person_id"))
-    private Set<Authority> authorities;
+    private Set<Authority> authorities = new HashSet<>();
+
 
     @Override
     public boolean equals(Object o) {
