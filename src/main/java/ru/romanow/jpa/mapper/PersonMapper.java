@@ -11,7 +11,12 @@ import ru.romanow.jpa.model.PersonResponse;
 
 import static org.mapstruct.NullValuePropertyMappingStrategy.IGNORE;
 
-@Mapper(config = MapperConfiguration.class, uses = { AddressMapper.class, AuthorityMapper.class })
+@Mapper(config = MapperConfiguration.class,
+        uses = {
+                AddressMapper.class,
+                AuthorityMapper.class,
+                RoleMapper.class
+        })
 public interface PersonMapper {
 
     PersonResponse toModel(Person person);
@@ -34,4 +39,12 @@ public interface PersonMapper {
     @Mapping(target = "address", ignore = true)
     @Mapping(target = "authorities", ignore = true)
     void fullUpdate(PersonModifyRequest request, @MappingTarget Person person);
+
+
+    @Mapping(target = "addressId", ignore = true)
+    @Mapping(target = "id", ignore = true)
+    Person toModel(PersonModifyRequest request);
+
+    @Mapping(target = "id", ignore = true)
+    Person fullUpdate(Person newPerson, @MappingTarget Person person);
 }

@@ -17,7 +17,6 @@ import ru.romanow.jpa.repository.PersonRepository;
 import ru.romanow.jpa.repository.RoleRepository;
 
 import javax.persistence.EntityNotFoundException;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -126,54 +125,11 @@ public class PersonServiceImpl
     @Override
     @Transactional
     public PersonResponse fullUpdate(int personId, @NotNull PersonModifyRequest request) {
-        final Person person = personRepository.findById(personId)
+        final var person = personRepository.findById(personId)
                 .orElseThrow(() -> new EntityNotFoundException("Person for id '" + personId + "' not found"));
-
-        personMapper.fullUpdate(request, person);
-        addressMapper.fullUpdate(request.getAddress(), person.getAddress());
-
-        if (request.getRoles() != null) {
-            var newRoles = new HashSet<Role>();
-            var existingRoles = person
-                    .getRoles()
-                    .stream()
-                    .collect(toMap(Role::getName, identity()));
-            for (var roleName : request.getRoles()) {
-                if (existingRoles.containsKey(roleName)) {
-                    newRoles.add(existingRoles.get(roleName));
-                } else {
-                    var role = roleRepository
-                            .findByName(roleName)
-                            .orElse(new Role().setName(roleName));
-                    newRoles.add(role);
-                }
-            }
-            person.setRoles(newRoles);
-        }
-
-        if (request.getAuthorities() != null) {
-            var newAuthorities = new HashSet<Authority>();
-            var existingAuthorities = person
-                    .getAuthorities()
-                    .stream()
-                    .collect(toMap(Authority::getId, identity()));
-            for (var authority : request.getAuthorities()) {
-                var authorityId = authority.getId();
-                if (authorityId != null && existingAuthorities.containsKey(authorityId)) {
-                    var existingAuthority = existingAuthorities.get(authorityId);
-                    authorityMapper.update(authority, existingAuthority);
-                    newAuthorities.add(existingAuthority);
-                } else {
-                    var newAuthority = new Authority();
-                    authorityMapper.fullUpdate(authority, newAuthority);
-                    newAuthorities.add(newAuthority);
-                }
-            }
-            person.getAuthorities().clear();
-            person.getAuthorities().addAll(newAuthorities);
-        }
-
-        return personMapper.toModel(person);
+        final var newPerson = personMapper.toModel(request);
+        final var fullUpdatePerson = personMapper.fullUpdate(newPerson, person);
+        return personMapper.toModel(fullUpdatePerson);
     }
 
     @Override

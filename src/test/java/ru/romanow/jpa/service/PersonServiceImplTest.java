@@ -14,7 +14,6 @@ import ru.romanow.jpa.model.PersonModifyRequest;
 import ru.romanow.jpa.repository.PersonRepository;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,46 +51,15 @@ class PersonServiceImplTest {
     }
 
     @Test
-    void shouldAddNewAuthorityWhenPersonIsFullUpdate() {
-        final var initPersonResponse = personService.findById(this.person.getId());
-        final var newAuthority = new AuthorityInfo()
-                .setName("authority3")
-                .setPriority(3);
-        final List<AuthorityInfo> initAuthorities = initPersonResponse.getAuthorities();
-        initAuthorities.add(newAuthority);
-        final var request = new PersonModifyRequest()
-                .setFirstName(initPersonResponse.getFirstName())
-                .setLastName(initPersonResponse.getLastName())
-                .setAuthorities(new HashSet<>(initAuthorities));
-
-        final var personResponse = personService.fullUpdate(initPersonResponse.getId(), request);
-
-        assertThat(personResponse).isNotNull();
-        assertThat(personResponse.getAuthorities()).isNotNull().containsExactlyElementsOf(initAuthorities);
-    }
-
-    @Test
-    void shouldUpdateExistedAuthorityWhenPersonIsFullUpdated() {
-        final var initPersonResponse = personService.findById(this.person.getId());
-        final var authorities = initPersonResponse.getAuthorities();
-        authorities.get(0).setName("updatedName");
-
-        final var request = new PersonModifyRequest()
-                .setFirstName(initPersonResponse.getFirstName())
-                .setLastName(initPersonResponse.getLastName())
-                .setAuthorities(new HashSet<>(authorities));
-
-        final var personResponse = personService.fullUpdate(initPersonResponse.getId(), request);
-
-        assertThat(personResponse).isNotNull();
-        assertThat(personResponse.getAuthorities()).isNotNull().containsExactlyElementsOf(authorities);
-    }
-
-    @Test
-    void shouldDeleteExistedAuthorityWhenPersonIsFullUpdated() {
+    void shouldFullUpdatePerson() {
         final var initPersonResponse = personService.findById(this.person.getId());
         final var authorities = initPersonResponse.getAuthorities();
         authorities.remove(0);
+        authorities.get(0).setName("updatedName");
+        final var newAuthority = new AuthorityInfo()
+                .setName("authority3")
+                .setPriority(3);
+        authorities.add(newAuthority);
 
         final var request = new PersonModifyRequest()
                 .setFirstName(initPersonResponse.getFirstName())
@@ -101,6 +69,5 @@ class PersonServiceImplTest {
         final var personResponse = personService.fullUpdate(initPersonResponse.getId(), request);
 
         assertThat(personResponse).isNotNull();
-        assertThat(personResponse.getAuthorities()).isNotNull().containsExactlyElementsOf(authorities);
     }
 }

@@ -13,6 +13,8 @@ import static org.mapstruct.NullValuePropertyMappingStrategy.IGNORE;
 public interface AddressMapper {
     AddressInfo toModel(Address address);
 
+    Address toEntity(AddressInfo addressInfo);
+
     @Mapping(target = "id", ignore = true)
     @BeanMapping(nullValuePropertyMappingStrategy = IGNORE)
     void update(AddressInfo request, @MappingTarget Address person);

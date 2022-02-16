@@ -3,8 +3,6 @@ package ru.romanow.jpa.model;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
-import javax.persistence.Column;
-
 @Data
 @Accessors(chain = true)
 public class AddressInfo {

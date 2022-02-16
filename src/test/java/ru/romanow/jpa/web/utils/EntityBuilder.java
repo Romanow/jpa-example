@@ -9,7 +9,6 @@ import ru.romanow.jpa.model.AddressInfo;
 import ru.romanow.jpa.model.AuthorityInfo;
 import ru.romanow.jpa.model.PersonModifyRequest;
 
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.IntStream.range;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
