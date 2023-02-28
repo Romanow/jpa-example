@@ -5,7 +5,8 @@ import lombok.experimental.Accessors;
 
 @Data
 @Accessors(chain = true)
-public class AuthorityInfo {
+public class AuthorityInfo
+        implements IdentifiableModel {
     private Integer id;
     private String name;
     private Integer priority;

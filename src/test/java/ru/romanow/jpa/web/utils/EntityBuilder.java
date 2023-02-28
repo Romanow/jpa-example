@@ -17,7 +17,7 @@ import static org.apache.commons.lang3.RandomUtils.nextInt;
 
 public final class EntityBuilder {
     @NotNull
-    public static PersonModifyRequest buildPersonModifyRequest(int roleCount) {
+    public static PersonModifyRequest buildPersonModifyRequest(int roleCount, int authorityCount) {
         return new PersonModifyRequest()
                 .setFirstName(randomAlphabetic(8))
                 .setMiddleName(randomAlphabetic(8))
@@ -27,7 +27,7 @@ public final class EntityBuilder {
                 .setRoles(range(0, roleCount)
                         .mapToObj(i -> randomAlphabetic(4))
                         .collect(toSet()))
-                .setAuthorities(range(0, roleCount)
+                .setAuthorities(range(0, authorityCount)
                         .mapToObj(i -> new AuthorityInfo().setName(randomAlphabetic(4)).setPriority(nextInt(1, 10)))
                         .collect(toSet()));
     }

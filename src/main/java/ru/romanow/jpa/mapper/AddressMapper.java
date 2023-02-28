@@ -1,22 +1,23 @@
 package ru.romanow.jpa.mapper;
 
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
+import org.mapstruct.*;
 import ru.romanow.jpa.domain.Address;
 import ru.romanow.jpa.model.AddressInfo;
 
 import static org.mapstruct.NullValuePropertyMappingStrategy.IGNORE;
 
-@Mapper(config = MapperConfiguration.class)
+@Mapper(config = MapperConfiguration.class, uses = ReferenceMapper.class)
 public interface AddressMapper {
     AddressInfo toModel(Address address);
 
     @Mapping(target = "id", ignore = true)
+    Address toEntity(AddressInfo address);
+
+    @InheritConfiguration(name = "toEntity")
     @BeanMapping(nullValuePropertyMappingStrategy = IGNORE)
     void update(AddressInfo request, @MappingTarget Address person);
 
-    @Mapping(target = "id", ignore = true)
+    @FullUpdate
+    @InheritConfiguration(name = "toEntity")
     void fullUpdate(AddressInfo request, @MappingTarget Address person);
 }

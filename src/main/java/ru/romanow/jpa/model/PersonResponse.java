@@ -3,12 +3,12 @@ package ru.romanow.jpa.model;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
-import java.util.List;
 import java.util.Set;
 
 @Data
 @Accessors(chain = true)
-public class PersonResponse {
+public class PersonResponse
+        implements IdentifiableModel {
     private Integer id;
     private String firstName;
     private String middleName;
@@ -16,5 +16,5 @@ public class PersonResponse {
     private Integer age;
     private AddressInfo address;
     private Set<String> roles;
-    private List<AuthorityInfo> authorities;
+    private Set<AuthorityInfo> authorities;
 }

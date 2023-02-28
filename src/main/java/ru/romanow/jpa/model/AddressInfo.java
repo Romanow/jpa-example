@@ -3,11 +3,10 @@ package ru.romanow.jpa.model;
 import lombok.Data;
 import lombok.experimental.Accessors;
 
-import javax.persistence.Column;
-
 @Data
 @Accessors(chain = true)
-public class AddressInfo {
+public class AddressInfo
+        implements IdentifiableModel {
     private Integer id;
     private String city;
     private String country;

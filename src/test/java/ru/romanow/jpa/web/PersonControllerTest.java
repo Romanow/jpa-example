@@ -2,18 +2,21 @@ package ru.romanow.jpa.web;
 
 import com.google.gson.Gson;
 import org.apache.commons.lang3.StringUtils;
-import org.junit.jupiter.api.Disabled;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.AutoConfigureTestEntityManager;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 import ru.romanow.jpa.domain.Address;
 import ru.romanow.jpa.domain.Authority;
+import ru.romanow.jpa.domain.Person;
 import ru.romanow.jpa.domain.Role;
 import ru.romanow.jpa.model.AddressInfo;
 import ru.romanow.jpa.model.AuthorityInfo;
@@ -22,9 +25,13 @@ import ru.romanow.jpa.repository.PersonRepository;
 import ru.romanow.jpa.web.dao.EntityDao;
 
 import java.util.List;
+import java.util.stream.Stream;
 
+import static java.util.Arrays.stream;
 import static java.util.Set.of;
+import static java.util.stream.Stream.concat;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.boot.jdbc.EmbeddedDatabaseConnection.H2;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -35,9 +42,14 @@ import static ru.romanow.jpa.web.utils.EntityBuilder.buildPersonModifyRequest;
 
 @ActiveProfiles("test")
 @SpringBootTest
+@Transactional
+@AutoConfigureTestEntityManager
 @AutoConfigureTestDatabase(connection = H2)
 @AutoConfigureMockMvc
 class PersonControllerTest {
+
+    private static final int ROLE_COUNT = 2;
+    private static final int AUTHORITY_COUNT = 3;
 
     @Autowired
     private PersonRepository personRepository;
@@ -51,7 +63,9 @@ class PersonControllerTest {
     @Test
     void testPersons()
             throws Exception {
-        personRepository.saveAll(List.of(buildPerson(3, 2), buildPerson(2, 2)));
+        personRepository.saveAll(
+                List.of(buildPerson(ROLE_COUNT, AUTHORITY_COUNT), buildPerson(ROLE_COUNT, AUTHORITY_COUNT))
+        );
 
         mockMvc.perform(get("/api/v1/persons"))
                 .andExpect(status().isOk())
@@ -61,10 +75,10 @@ class PersonControllerTest {
     @Test
     void testPersonById()
             throws Exception {
-        var person = personRepository.save(buildPerson(2, 2));
+        var person = personRepository.save(buildPerson(ROLE_COUNT, AUTHORITY_COUNT));
         var address = person.getAddress();
-        var roles = person.getRoles().stream().map(Role::getName).toArray(String[]::new);
-        var authorities = person.getAuthorities().stream().map(Authority::getName).toArray(String[]::new);
+        var roles = personRoles(person).toArray(String[]::new);
+        var authorities = personAuthorities(person).toArray(String[]::new);
 
         mockMvc.perform(get("/api/v1/persons/{id}", person.getId()))
                 .andExpect(status().isOk())
@@ -85,7 +99,7 @@ class PersonControllerTest {
     void testCreate()
             throws Exception {
         var gson = new Gson();
-        var request = buildPersonModifyRequest(2);
+        var request = buildPersonModifyRequest(ROLE_COUNT, AUTHORITY_COUNT);
         var location = mockMvc.perform(post("/api/v1/persons")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(gson.toJson(request)))
@@ -112,13 +126,21 @@ class PersonControllerTest {
                 .andExpect(jsonPath("$.address.address").value(address.getAddress()))
                 .andExpect(jsonPath("$.roles[*]").value(containsInAnyOrder(roles)))
                 .andExpect(jsonPath("$.authorities[*].name").value(containsInAnyOrder(authorities)));
+
+        assertThat(entityDao.findAll(Role.class))
+                .extracting("name")
+                .containsExactlyInAnyOrder(roles);
+
+        assertThat(entityDao.findAll(Authority.class))
+                .extracting("name")
+                .containsExactlyInAnyOrder(authorities);
     }
 
     @Test
     void testUpdate()
             throws Exception {
         var gson = new Gson();
-        var person = personRepository.save(buildPerson(2, 3));
+        var person = personRepository.save(buildPerson(ROLE_COUNT, AUTHORITY_COUNT));
         var initialRoles = List.copyOf(person.getRoles());
         var initialAuthorities = List.copyOf(person.getAuthorities());
         var roles = of("Architect", "DevOps", initialRoles.get(1).getName());
@@ -163,32 +185,33 @@ class PersonControllerTest {
                         )
                 );
 
-        for (var role : person.getRoles()) {
-            assertThat(entityDao.findById(role.getId(), Role.class).isPresent()).isTrue();
-        }
+        assertThat(entityDao.findAll(Role.class))
+                .extracting("name")
+                .containsExactlyInAnyOrder("Architect", "DevOps", initialRoles.get(0).getName(), initialRoles.get(1).getName());
     }
 
     @Test
     void testFullUpdate()
             throws Exception {
         var gson = new Gson();
-        var person = personRepository.save(buildPerson(2, 3));
+        var person = personRepository.save(buildPerson(ROLE_COUNT, AUTHORITY_COUNT));
         var roles = of("Architect", "DevOps", "Developer");
+        var initialRoles = personRoles(person).toArray(String[]::new);
         var initialAuthorities = List.copyOf(person.getAuthorities());
-        var request = buildPersonModifyRequest(2)
+        var request = buildPersonModifyRequest(ROLE_COUNT, AUTHORITY_COUNT)
                 .setFirstName("Alex")
                 .setMiddleName(null)
                 .setLastName("Romanow")
                 .setAddress(new AddressInfo()
                         .setCountry("USA")
                         .setCity("NY")
-                        .setAddress("Molostov st."))
+                        .setAddress("Molostovih st."))
                 .setRoles(roles)
                 .setAuthorities(of(
                         new AuthorityInfo().setId(initialAuthorities.get(0).getId()).setName("EAT").setPriority(1),
                         new AuthorityInfo().setId(initialAuthorities.get(1).getId()).setName("SLEEP").setPriority(2),
                         new AuthorityInfo().setName("RIDE").setPriority(3)
-                ));;
+                ));
 
         mockMvc.perform(put("/api/v1/persons/{id}", person.getId())
                         .contentType(MediaType.APPLICATION_JSON)
@@ -205,30 +228,41 @@ class PersonControllerTest {
                 .andExpect(jsonPath("$.roles[*]").value(containsInAnyOrder("Architect", "DevOps", "Developer")))
                 .andExpect(jsonPath("$.authorities[*].name").value(containsInAnyOrder("EAT", "SLEEP", "RIDE")));
 
-        for (var role : person.getRoles()) {
-            assertThat(entityDao.findById(role.getId(), Role.class).isPresent()).isTrue();
-        }
-        for (int i = 0; i < 2; i++) {
-            assertThat(entityDao.findById(initialAuthorities.get(i).getId(), Authority.class).isPresent()).isTrue();
-        }
-        assertThat(entityDao.findById(initialAuthorities.get(2).getId(), Authority.class).isPresent()).isFalse();
+        assertThat(entityDao.findAll(Role.class))
+                .extracting("name")
+                .containsExactlyInAnyOrder(concat(stream(initialRoles), roles.stream()).toArray());
+
+        assertThat(entityDao.findAll(Authority.class))
+                .extracting("id", "name", "priority")
+                .containsExactlyInAnyOrder(tuple(1, "EAT", 1), tuple(2, "SLEEP", 2), tuple(4, "RIDE", 3));
+
+        assertThat(entityDao.findById(initialAuthorities.get(2).getId(), Authority.class).isEmpty()).isTrue();
     }
 
     @Test
     void testDelete()
             throws Exception {
-        var person = personRepository.save(buildPerson(2, 2));
+        var person = personRepository.save(buildPerson(ROLE_COUNT, AUTHORITY_COUNT));
 
         mockMvc.perform(delete("/api/v1/persons/{id}", person.getId()))
                 .andExpect(status().isNoContent());
 
         assertThat(personRepository.findById(person.getId()).isPresent()).isFalse();
         assertThat(entityDao.findById(person.getAddress().getId(), Address.class).isPresent()).isFalse();
-        for (var role : person.getRoles()) {
-            assertThat(entityDao.findById(role.getId(), Role.class).isPresent()).isTrue();
-        }
-        for (var grant : person.getAuthorities()) {
-            assertThat(entityDao.findById(grant.getId(), Authority.class).isPresent()).isFalse();
-        }
+        assertThat(entityDao.findAll(Role.class))
+                .extracting("name")
+                .containsExactlyInAnyOrder(personRoles(person).toArray());
+        assertThat(entityDao.findAll(Authority.class)).isEmpty();
     }
+
+    @NotNull
+    private Stream<String> personRoles(Person person) {
+        return person.getRoles().stream().map(Role::getName);
+    }
+
+    @NotNull
+    private Stream<String> personAuthorities(Person person) {
+        return person.getAuthorities().stream().map(Authority::getName);
+    }
+
 }

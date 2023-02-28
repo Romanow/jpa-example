@@ -8,6 +8,7 @@ import javax.persistence.PersistenceContext;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Root;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -29,5 +30,15 @@ public class EntityDaoImpl
                 .getResultList()
                 .stream()
                 .findFirst();
+    }
+
+    @Override
+    public <T> List<T> findAll(Class<T> cls) {
+        final CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        final CriteriaQuery<T> query = criteriaBuilder.createQuery(cls);
+        final Root<T> root = query.from(cls);
+        return entityManager
+                .createQuery(query.select(root))
+                .getResultList();
     }
 }
