@@ -37,8 +37,7 @@ import static org.springframework.boot.jdbc.EmbeddedDatabaseConnection.H2;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static ru.romanow.jpa.web.utils.EntityBuilder.buildPerson;
-import static ru.romanow.jpa.web.utils.EntityBuilder.buildPersonModifyRequest;
+import static ru.romanow.jpa.web.utils.EntityBuilder.*;
 
 @ActiveProfiles("test")
 @SpringBootTest
@@ -47,9 +46,6 @@ import static ru.romanow.jpa.web.utils.EntityBuilder.buildPersonModifyRequest;
 @AutoConfigureTestDatabase(connection = H2)
 @AutoConfigureMockMvc
 class PersonControllerTest {
-
-    private static final int ROLE_COUNT = 2;
-    private static final int AUTHORITY_COUNT = 3;
 
     @Autowired
     private PersonRepository personRepository;

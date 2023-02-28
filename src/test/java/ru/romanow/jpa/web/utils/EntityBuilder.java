@@ -9,13 +9,15 @@ import ru.romanow.jpa.model.AddressInfo;
 import ru.romanow.jpa.model.AuthorityInfo;
 import ru.romanow.jpa.model.PersonModifyRequest;
 
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.IntStream.range;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static org.apache.commons.lang3.RandomUtils.nextInt;
 
 public final class EntityBuilder {
+    public static final int ROLE_COUNT = 2;
+    public static final int AUTHORITY_COUNT = 3;
+
     @NotNull
     public static PersonModifyRequest buildPersonModifyRequest(int roleCount, int authorityCount) {
         return new PersonModifyRequest()
