@@ -3,8 +3,10 @@ package ru.romanow.jpa.domain;
 import lombok.Data;
 import lombok.experimental.Accessors;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.jetbrains.annotations.NotNull;
 
 import javax.persistence.*;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
@@ -43,11 +45,19 @@ public class Person {
             joinColumns = @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_person_roles_person_id")),
             inverseJoinColumns = @JoinColumn(name = "role_id", foreignKey = @ForeignKey(name = "fk_person_roles_role_id"))
     )
-    private Set<Role> roles;
+    private Set<Role> roles = new HashSet<>();
 
     @OneToMany(cascade = { CascadeType.PERSIST, CascadeType.REMOVE }, orphanRemoval = true)
     @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_authority_person_id"))
-    private Set<Authority> authorities;
+    private Set<Authority> authorities = new HashSet<>();
+
+    public void addRole(@NotNull Role role) {
+        roles.add(role);
+    }
+
+    public void addAuthority(@NotNull Authority authority) {
+        authorities.add(authority);
+    }
 
     @Override
     public boolean equals(Object o) {

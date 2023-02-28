@@ -4,33 +4,25 @@ import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.romanow.jpa.domain.Authority;
 import ru.romanow.jpa.domain.Person;
-import ru.romanow.jpa.domain.Role;
-import ru.romanow.jpa.mapper.AddressMapper;
-import ru.romanow.jpa.mapper.AuthorityMapper;
+import ru.romanow.jpa.mapper.PersonFullUpdateMapper;
 import ru.romanow.jpa.mapper.PersonMapper;
 import ru.romanow.jpa.model.PersonModifyRequest;
 import ru.romanow.jpa.model.PersonResponse;
 import ru.romanow.jpa.repository.PersonRepository;
-import ru.romanow.jpa.repository.RoleRepository;
 
 import javax.persistence.EntityNotFoundException;
 import java.util.List;
 
-import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 
 @Service
 @RequiredArgsConstructor
 public class PersonServiceImpl
         implements PersonService {
     private final PersonRepository personRepository;
-    private final RoleRepository roleRepository;
     private final PersonMapper personMapper;
-    private final AddressMapper addressMapper;
-    private final AuthorityMapper authorityMapper;
+    private final PersonFullUpdateMapper updateMapper;
 
     @NotNull
     @Override
@@ -51,58 +43,27 @@ public class PersonServiceImpl
     @Override
     @Transactional
     public PersonResponse update(int personId, @NotNull PersonModifyRequest request) {
-        final Person person = personRepository.findById(personId)
+        return personRepository.findById(personId)
+                .map(person -> {
+                    personMapper.update(request, person);
+                    return person;
+                })
+                .map(personMapper::toModel)
                 .orElseThrow(() -> new EntityNotFoundException("Person for id '" + personId + "' not found"));
-
-        personMapper.update(request, person);
-        addressMapper.update(request.getAddress(), person.getAddress());
-        if (request.getRoles() != null) {
-            var existingRoles = person
-                    .getRoles()
-                    .stream()
-                    .collect(toMap(Role::getName, identity()));
-            for (var roleName : request.getRoles()) {
-                if (!existingRoles.containsKey(roleName)) {
-                    var role = roleRepository
-                            .findByName(roleName)
-                            .orElse(new Role().setName(roleName));
-                    person.getRoles().add(role);
-                }
-            }
-        }
-
-        if (request.getAuthorities() != null) {
-            var existingAuthorities = person
-                    .getAuthorities()
-                    .stream()
-                    .collect(toMap(Authority::getId, identity()));
-            for (var authority : request.getAuthorities()) {
-                var authorityId = authority.getId();
-                if (authorityId != null && existingAuthorities.containsKey(authorityId)) {
-                    var existingAuthority = existingAuthorities.get(authorityId);
-                    authorityMapper.update(authority, existingAuthority);
-                } else {
-                    var newAuthority = new Authority();
-                    authorityMapper.fullUpdate(authority, newAuthority);
-                    person.getAuthorities().add(newAuthority);
-                }
-            }
-        }
-
-        return personMapper.toModel(person);
     }
 
     @NotNull
     @Override
     @Transactional
     public PersonResponse fullUpdate(int personId, @NotNull PersonModifyRequest request) {
-        final Person person = personRepository
+        return personRepository
                 .findById(personId)
+                .map(person -> {
+                    updateMapper.fullUpdate(request, person);
+                    return person;
+                })
+                .map(personMapper::toModel)
                 .orElseThrow(() -> new EntityNotFoundException("Person for id '" + personId + "' not found"));
-
-        personMapper.fullUpdate(request, person);
-
-        return personMapper.toModel(person);
     }
 
     @Override

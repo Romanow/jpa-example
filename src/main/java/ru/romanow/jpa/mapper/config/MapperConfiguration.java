@@ -1,4 +1,4 @@
-package ru.romanow.jpa.mapper;
+package ru.romanow.jpa.mapper.config;
 
 import org.mapstruct.MapperConfig;
 

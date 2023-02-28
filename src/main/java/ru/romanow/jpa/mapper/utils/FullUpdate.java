@@ -1,4 +1,4 @@
-package ru.romanow.jpa.mapper;
+package ru.romanow.jpa.mapper.utils;
 
 import org.mapstruct.Qualifier;
 

@@ -2,6 +2,9 @@ package ru.romanow.jpa.mapper;
 
 import org.mapstruct.*;
 import ru.romanow.jpa.domain.Authority;
+import ru.romanow.jpa.mapper.config.MapperConfiguration;
+import ru.romanow.jpa.mapper.utils.FullUpdate;
+import ru.romanow.jpa.mapper.utils.ReferenceMapper;
 import ru.romanow.jpa.model.AuthorityInfo;
 
 import static org.mapstruct.NullValuePropertyMappingStrategy.IGNORE;

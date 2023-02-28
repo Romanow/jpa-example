@@ -5,6 +5,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.ObjectFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import ru.romanow.jpa.domain.Role;
+import ru.romanow.jpa.mapper.config.MapperConfiguration;
 import ru.romanow.jpa.repository.RoleRepository;
 
 @Mapper(config = MapperConfiguration.class)
