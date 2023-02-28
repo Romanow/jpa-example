@@ -1,6 +1,6 @@
 # JPA example
 
-[![Build project](https://github.com/Romanow/jpa-example/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/Romanow/jpa-example/actions/workflows/build.yml)
+[![Build project](https://github.com/Romanow/jpa-example/actions/workflows/build.yaml/badge.svg?branch=master)](https://github.com/Romanow/jpa-example/actions/workflows/build.yaml)
 
 ## Использование Hibernate + JPA
 
