@@ -12,7 +12,7 @@ plugins {
 }
 
 ext {
-    springBootVersion = "3.5.7"
+    springBootVersion = "3.5.8"
     mapstructVersion = "1.6.3"
     jetbrainsAnnotationsVersion = "22.0.0"
     postgresContainerVersion = "1.21.3"
