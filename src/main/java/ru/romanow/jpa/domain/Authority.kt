@@ -1,50 +1,42 @@
-package ru.romanow.jpa.domain;
+package ru.romanow.jpa.domain
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-import org.apache.commons.lang3.builder.ToStringBuilder;
+import jakarta.persistence.*
 
-import jakarta.persistence.*;
-import java.util.Objects;
-
-@Data
-@Accessors(chain = true)
 @Entity
 @Table(name = "authority")
-public class Authority {
-
+data class Authority(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    val id: Int? = null,
 
     @Column(name = "name", length = 80, nullable = false)
-    private String name;
+    var name: String? = null,
 
     @Column(name = "priority", nullable = false)
-    private Integer priority;
+    var priority: Int? = null,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Person person;
+    val person: Person? = null,
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Authority) return false
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Authority grant = (Authority) o;
-        return Objects.equals(id, grant.id) && Objects.equals(name, grant.name) && Objects.equals(priority, grant.priority);
+        if (id != other.id) return false
+        if (name != other.name) return false
+        if (priority != other.priority) return false
+
+        return true
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, name, priority);
+    override fun hashCode(): Int {
+        var result = id ?: 0
+        result = 31 * result + (name?.hashCode() ?: 0)
+        result = 31 * result + (priority ?: 0)
+        return result
     }
 
-    @Override
-    public String toString() {
-        return new ToStringBuilder(this)
-                .append("id", id)
-                .append("name", name)
-                .append("priority", priority)
-                .toString();
+    override fun toString(): String {
+        return "Authority(id=$id, name=$name, priority=$priority)"
     }
 }

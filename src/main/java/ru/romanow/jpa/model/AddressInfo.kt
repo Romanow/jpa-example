@@ -1,15 +1,9 @@
-package ru.romanow.jpa.model;
+package ru.romanow.jpa.model
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-
-@Data
-@Accessors(chain = true)
-public class AddressInfo
-        implements IdentifiableModel {
-    private Integer id;
-    private String city;
-    private String country;
-    private String street;
-    private String address;
-}
+data class AddressInfo(
+    override var id: Int? = null,
+    var city: String? = null,
+    var country: String? = null,
+    var street: String? = null,
+    var address: String? = null
+) : IdentifiableModel

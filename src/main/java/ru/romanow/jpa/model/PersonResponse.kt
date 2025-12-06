@@ -1,20 +1,12 @@
-package ru.romanow.jpa.model;
+package ru.romanow.jpa.model
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-
-import java.util.Set;
-
-@Data
-@Accessors(chain = true)
-public class PersonResponse
-        implements IdentifiableModel {
-    private Integer id;
-    private String firstName;
-    private String middleName;
-    private String lastName;
-    private Integer age;
-    private AddressInfo address;
-    private Set<String> roles;
-    private Set<AuthorityInfo> authorities;
-}
+data class PersonResponse(
+    override var id: Int? = null,
+    var firstName: String? = null,
+    var middleName: String? = null,
+    var lastName: String? = null,
+    var age: Int? = null,
+    var address: AddressInfo? = null,
+    var roles: Set<String>? = null,
+    var authorities: Set<AuthorityInfo>? = null
+) : IdentifiableModel

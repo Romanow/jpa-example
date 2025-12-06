@@ -1,43 +1,34 @@
-package ru.romanow.jpa.domain;
+package ru.romanow.jpa.domain
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-import org.apache.commons.lang3.builder.ToStringBuilder;
+import jakarta.persistence.*
 
-import jakarta.persistence.*;
-import java.util.Objects;
-
-@Data
-@Accessors(chain = true)
 @Entity
 @Table(name = "role")
-public class Role {
-
+data class Role(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    val id: Int? = null,
 
     @Column(name = "name", length = 80, nullable = false)
-    private String name;
+    var name: String? = null
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Role) return false
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Role role = (Role) o;
-        return Objects.equals(id, role.id) && Objects.equals(name, role.name);
+        if (id != other.id) return false
+        if (name != other.name) return false
+
+        return true
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(id, name);
+    override fun hashCode(): Int {
+        var result = id ?: 0
+        result = 31 * result + (name?.hashCode() ?: 0)
+        return result
     }
 
-    @Override
-    public String toString() {
-        return new ToStringBuilder(this)
-                .append("id", id)
-                .append("name", name)
-                .toString();
+    override fun toString(): String {
+        return "Role(id=$id, name=$name)"
     }
 }

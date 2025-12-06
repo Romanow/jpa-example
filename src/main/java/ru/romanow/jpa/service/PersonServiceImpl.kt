@@ -1,93 +1,64 @@
-package ru.romanow.jpa.service;
+package ru.romanow.jpa.service
 
-import lombok.RequiredArgsConstructor;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import ru.romanow.jpa.domain.Person;
-import ru.romanow.jpa.mapper.PersonFullUpdateMapper;
-import ru.romanow.jpa.mapper.PersonMapper;
-import ru.romanow.jpa.model.PersonModifyRequest;
-import ru.romanow.jpa.model.PersonResponse;
-import ru.romanow.jpa.repository.PersonRepository;
-
-import jakarta.persistence.EntityNotFoundException;
-import java.util.List;
-
-import static java.util.stream.Collectors.toList;
+import jakarta.persistence.EntityNotFoundException
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import ru.romanow.jpa.domain.Person
+import ru.romanow.jpa.mapper.PersonFullUpdateMapper
+import ru.romanow.jpa.mapper.PersonMapper
+import ru.romanow.jpa.model.PersonModifyRequest
+import ru.romanow.jpa.model.PersonResponse
+import ru.romanow.jpa.repository.PersonRepository
 
 @Service
-@RequiredArgsConstructor
-public class PersonServiceImpl
-        implements PersonService {
-    private final PersonRepository personRepository;
-    private final PersonMapper personMapper;
-    private final PersonFullUpdateMapper updateMapper;
+class PersonServiceImpl(
+    private val personRepository: PersonRepository,
+    private val personMapper: PersonMapper,
+    private val updateMapper: PersonFullUpdateMapper
+) : PersonService {
 
-    @NotNull
-    @Override
-    public PersonResponse findById(int personId) {
-        return personRepository.findById(personId)
-                .map(personMapper::toModel)
-                .orElseThrow(() -> new EntityNotFoundException("Person for id '" + personId + "' not found"));
-    }
-
-    @Override
-    @Transactional
-    public int create(@NotNull PersonModifyRequest request) {
-        final Person person = personMapper.toEntity(request);
-        return personRepository.save(person).getId();
-    }
-
-    @NotNull
-    @Override
-    @Transactional
-    public PersonResponse update(int personId, @NotNull PersonModifyRequest request) {
-        return personRepository.findById(personId)
-                .map(person -> {
-                    personMapper.update(request, person);
-                    return person;
-                })
-                .map(personMapper::toModel)
-                .orElseThrow(() -> new EntityNotFoundException("Person for id '" + personId + "' not found"));
-    }
-
-    @NotNull
-    @Override
-    @Transactional
-    public PersonResponse fullUpdate(int personId, @NotNull PersonModifyRequest request) {
-        return personRepository
-                .findById(personId)
-                .map(person -> {
-                    updateMapper.fullUpdate(request, person);
-                    return person;
-                })
-                .map(personMapper::toModel)
-                .orElseThrow(() -> new EntityNotFoundException("Person for id '" + personId + "' not found"));
-    }
-
-    @Override
-    @Transactional
-    public void delete(int personId) {
-        personRepository.deleteById(personId);
-    }
-
-    @NotNull
-    @Override
-    public List<PersonResponse> findAll() {
-        return personRepository.findAllUsingGraph()
-                .stream()
-                .map(personMapper::toModel)
-                .collect(toList());
-    }
-
-    @NotNull
-    @Override
     @Transactional(readOnly = true)
-    public List<PersonResponse> findByAddressId(int addressId) {
-        return personRepository.findByAddressId(addressId)
-                .stream()
-                .map(personMapper::toModel)
-                .collect(toList());
+    override fun findById(personId: Int): PersonResponse =
+        personRepository.findById(personId)
+            .map { personMapper.toModel(it!!) }
+            .orElseThrow { EntityNotFoundException("Person for id '$personId' not found") }
+
+
+    @Transactional
+    override fun create(request: PersonModifyRequest): Int {
+        val person: Person = personMapper.toEntity(request)
+        return personRepository.save(person).id!!
     }
+
+    @Transactional
+    override fun update(personId: Int, request: PersonModifyRequest): PersonResponse =
+        personRepository.findById(personId)
+            .map {
+                personMapper.update(request, it!!)
+                return@map personMapper.toModel(it)
+            }
+            .orElseThrow { EntityNotFoundException("Person for id '$personId' not found") }
+
+    @Transactional
+    override fun fullUpdate(personId: Int, request: PersonModifyRequest): PersonResponse =
+        personRepository
+            .findById(personId)
+            .map {
+                updateMapper.fullUpdate(request, it!!)
+                return@map personMapper.toModel(it)
+            }
+            .orElseThrow { EntityNotFoundException("Person for id '$personId' not found") }
+
+    @Transactional
+    override fun delete(personId: Int) {
+        personRepository.deleteById(personId)
+    }
+
+    @Transactional(readOnly = true)
+    override fun findAll() =
+        personRepository.findAllUsingGraph().map { personMapper.toModel(it) }
+
+    @Transactional(readOnly = true)
+    override fun findByAddressId(addressId: Int) =
+        personRepository.findByAddressId(addressId).map { personMapper.toModel(it) }
 }

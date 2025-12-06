@@ -1,85 +1,76 @@
-package ru.romanow.jpa.domain;
+package ru.romanow.jpa.domain
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-import org.apache.commons.lang3.builder.ToStringBuilder;
-import org.jetbrains.annotations.NotNull;
+import jakarta.persistence.*
 
-import jakarta.persistence.*;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
-
-@Data
-@Accessors(chain = true)
 @Entity
 @Table(name = "person")
-public class Person {
-
+data class Person(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    val id: Int? = null,
 
     @Column(name = "first_name", length = 80, nullable = false)
-    private String firstName;
+    var firstName: String? = null,
 
     @Column(name = "middle_name", length = 80)
-    private String middleName;
+    var middleName: String? = null,
 
     @Column(name = "last_name", length = 80, nullable = false)
-    private String lastName;
+    var lastName: String? = null,
 
     @Column(name = "age")
-    private Integer age;
+    var age: Int? = null,
 
     @Column(name = "address_id", updatable = false, insertable = false)
-    private Integer addressId;
+    var addressId: Int? = null,
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = { CascadeType.PERSIST, CascadeType.REMOVE })
-    @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
-    private Address address;
+    @ManyToOne(fetch = FetchType.LAZY, cascade = [CascadeType.PERSIST, CascadeType.REMOVE])
+    @JoinColumn(name = "address_id", foreignKey = ForeignKey(name = "fk_person_address_id"))
+    var address: Address? = null,
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    @ManyToMany(fetch = FetchType.LAZY, cascade = [CascadeType.PERSIST])
     @JoinTable(
-            name = "person_roles",
-            joinColumns = @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_person_roles_person_id")),
-            inverseJoinColumns = @JoinColumn(name = "role_id", foreignKey = @ForeignKey(name = "fk_person_roles_role_id"))
+        name = "person_roles",
+        joinColumns = [JoinColumn(name = "person_id", foreignKey = ForeignKey(name = "fk_person_roles_person_id"))],
+        inverseJoinColumns = [JoinColumn(name = "role_id", foreignKey = ForeignKey(name = "fk_person_roles_role_id"))]
     )
-    private Set<Role> roles = new HashSet<>();
+    var roles: MutableSet<Role> = HashSet(),
 
-    @OneToMany(cascade = { CascadeType.PERSIST, CascadeType.REMOVE }, orphanRemoval = true)
-    @JoinColumn(name = "person_id", foreignKey = @ForeignKey(name = "fk_authority_person_id"))
-    private Set<Authority> authorities = new HashSet<>();
-
-    public void addRole(@NotNull Role role) {
-        roles.add(role);
+    @OneToMany(cascade = [CascadeType.PERSIST, CascadeType.REMOVE], orphanRemoval = true)
+    @JoinColumn(name = "person_id", foreignKey = ForeignKey(name = "fk_authority_person_id"))
+    var authorities: MutableSet<Authority> = HashSet()
+) {
+    fun addRole(role: Role) {
+        roles.add(role)
     }
 
-    public void addAuthority(@NotNull Authority authority) {
-        authorities.add(authority);
+    fun addAuthority(authority: Authority) {
+        authorities.add(authority)
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Person person = (Person) o;
-        return Objects.equals(firstName, person.firstName) && Objects.equals(middleName, person.middleName) && Objects.equals(lastName, person.lastName) && Objects.equals(age, person.age);
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Person) return false
+
+        if (id != other.id) return false
+        if (firstName != other.firstName) return false
+        if (middleName != other.middleName) return false
+        if (lastName != other.lastName) return false
+        if (age != other.age) return false
+
+        return true
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(firstName, middleName, lastName, age);
+    override fun hashCode(): Int {
+        var result = id ?: 0
+        result = 31 * result + (firstName?.hashCode() ?: 0)
+        result = 31 * result + (middleName?.hashCode() ?: 0)
+        result = 31 * result + (lastName?.hashCode() ?: 0)
+        result = 31 * result + (age ?: 0)
+        return result
     }
 
-    @Override
-    public String toString() {
-        return new ToStringBuilder(this)
-                .append("id", id)
-                .append("firstName", firstName)
-                .append("middleName", middleName)
-                .append("lastName", lastName)
-                .append("age", age)
-                .toString();
+    override fun toString(): String {
+        return "Person(age=$age, lastName=$lastName, middleName=$middleName, firstName=$firstName, id=$id)"
     }
 }

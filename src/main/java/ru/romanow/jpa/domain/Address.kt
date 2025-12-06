@@ -1,57 +1,49 @@
-package ru.romanow.jpa.domain;
+package ru.romanow.jpa.domain
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-import org.apache.commons.lang3.builder.ToStringBuilder;
+import jakarta.persistence.*
 
-import jakarta.persistence.*;
-import java.util.List;
-import java.util.Objects;
-import java.util.StringJoiner;
-
-@Data
-@Accessors(chain = true)
 @Entity
 @Table(name = "address")
-public class Address {
-
+data class Address(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    val id: Int? = null,
 
     @Column(name = "city", nullable = false)
-    private String city;
+    var city: String? = null,
 
     @Column(name = "country", nullable = false)
-    private String country;
+    var country: String? = null,
 
     @Column(name = "street")
-    private String street;
+    var street: String? = null,
 
     @Column(name = "address", nullable = false)
-    private String address;
+    var address: String? = null,
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is Address) return false
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Address other = (Address) o;
-        return Objects.equals(city, other.city) && Objects.equals(country, other.country) && Objects.equals(street, other.street) && Objects.equals(address, other.address);
+        if (id != other.id) return false
+        if (city != other.city) return false
+        if (country != other.country) return false
+        if (street != other.street) return false
+        if (address != other.address) return false
+
+        return true
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(city, country, street, address);
+    override fun hashCode(): Int {
+        var result = id ?: 0
+        result = 31 * result + (city?.hashCode() ?: 0)
+        result = 31 * result + (country?.hashCode() ?: 0)
+        result = 31 * result + (street?.hashCode() ?: 0)
+        result = 31 * result + (address?.hashCode() ?: 0)
+        return result
     }
 
-    @Override
-    public String toString() {
-        return new ToStringBuilder(this)
-                .append("id", id)
-                .append("city", city)
-                .append("country", country)
-                .append("street", street)
-                .append("address", address)
-                .toString();
+    override fun toString(): String {
+        return "Address(id=$id, city=$city, country=$country, street=$street, address=$address)"
     }
 }

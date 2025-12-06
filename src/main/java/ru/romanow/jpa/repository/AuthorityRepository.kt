@@ -1,8 +1,6 @@
-package ru.romanow.jpa.repository;
+package ru.romanow.jpa.repository
 
-import org.springframework.data.repository.CrudRepository;
-import ru.romanow.jpa.domain.Authority;
+import org.springframework.data.repository.CrudRepository
+import ru.romanow.jpa.domain.Authority
 
-public interface AuthorityRepository
-        extends CrudRepository<Authority, Integer> {
-}
+interface AuthorityRepository : CrudRepository<Authority, Int>
