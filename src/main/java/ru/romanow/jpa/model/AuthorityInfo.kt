@@ -1,13 +1,7 @@
-package ru.romanow.jpa.model;
+package ru.romanow.jpa.model
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-
-@Data
-@Accessors(chain = true)
-public class AuthorityInfo
-        implements IdentifiableModel {
-    private Integer id;
-    private String name;
-    private Integer priority;
-}
+data class AuthorityInfo(
+    override var id: Int? = null,
+    var name: String? = null,
+    var priority: Int? = null
+) : IdentifiableModel

@@ -1,32 +1,26 @@
-package ru.romanow.jpa.mapper.utils;
+package ru.romanow.jpa.mapper.utils
 
-import lombok.SneakyThrows;
-import org.mapstruct.ObjectFactory;
-import org.mapstruct.TargetType;
-import org.springframework.stereotype.Component;
-import ru.romanow.jpa.model.IdentifiableModel;
-
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.EntityManager
+import jakarta.persistence.PersistenceContext
+import org.mapstruct.ObjectFactory
+import org.mapstruct.TargetType
+import org.springframework.stereotype.Component
+import ru.romanow.jpa.model.IdentifiableModel
 
 @Component
-public class ReferenceMapper {
-
-    @PersistenceContext
-    private EntityManager entityManager;
+class ReferenceMapper(@PersistenceContext private val entityManager: EntityManager) {
 
     @ObjectFactory
-    public <T> T resolve(IdentifiableModel model, @TargetType Class<T> type) {
-        if (model.getId() != null) {
-            final var entity = entityManager.getReference(type, model.getId());
-            return entity != null ? entity : newInstance(type);
+    fun <T> resolve(model: IdentifiableModel, @TargetType type: Class<T>): T {
+        if (model.id != null) {
+            val entity: T = entityManager.getReference(type, model.id)
+            return entity ?: newInstance(type)
         } else {
-            return newInstance(type);
+            return newInstance(type)
         }
     }
 
-    @SneakyThrows
-    private <T> T newInstance(Class<T> type) {
-        return type.getDeclaredConstructor().newInstance();
+    private fun <T> newInstance(type: Class<T>): T {
+        return type.getDeclaredConstructor().newInstance()
     }
 }

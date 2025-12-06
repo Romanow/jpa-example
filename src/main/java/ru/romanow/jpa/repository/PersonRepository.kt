@@ -1,33 +1,23 @@
-package ru.romanow.jpa.repository;
+package ru.romanow.jpa.repository
 
-import org.hibernate.annotations.Fetch;
-import org.hibernate.annotations.FetchMode;
-import org.hibernate.annotations.FetchProfile;
-import org.jetbrains.annotations.NotNull;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import ru.romanow.jpa.domain.Authority;
-import ru.romanow.jpa.domain.Person;
+import org.springframework.data.jpa.repository.EntityGraph
+import org.springframework.data.jpa.repository.JpaRepository
+import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.query.Param
+import ru.romanow.jpa.domain.Person
+import java.util.*
 
-import java.util.List;
-import java.util.Optional;
+interface PersonRepository : JpaRepository<Person, Int> {
+    @EntityGraph(attributePaths = ["address", "roles", "authorities"])
+    override fun findById(id: Int): Optional<Person?>
 
-public interface PersonRepository
-        extends JpaRepository<Person, Integer> {
-
-    @NotNull
-    @EntityGraph(attributePaths = {"address", "roles", "authorities"})
-    Optional<Person> findById(@NotNull Integer id);
-
-    @EntityGraph(attributePaths = {"address", "roles", "authorities"})
+    @EntityGraph(attributePaths = ["address", "roles", "authorities"])
     @Query("select p from Person p")
-    List<Person> findAllUsingGraph();
+    fun findAllUsingGraph(): List<Person>
 
     @Query("select p from Person p join fetch p.address")
-    List<Person> findPersonWithAddress();
+    fun findPersonWithAddress(): List<Person>
 
     @Query("select p from Person p where p.addressId = :addressId")
-    List<Person> findByAddressId(@Param("addressId") Integer addressId);
+    fun findByAddressId(@Param("addressId") addressId: Int): List<Person>
 }

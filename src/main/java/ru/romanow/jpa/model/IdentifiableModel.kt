@@ -1,5 +1,5 @@
-package ru.romanow.jpa.model;
+package ru.romanow.jpa.model
 
-public interface IdentifiableModel {
-    Integer getId();
+interface IdentifiableModel {
+    var id: Int?
 }

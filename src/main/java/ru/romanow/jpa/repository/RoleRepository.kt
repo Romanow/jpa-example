@@ -1,11 +1,9 @@
-package ru.romanow.jpa.repository;
+package ru.romanow.jpa.repository
 
-import org.springframework.data.repository.CrudRepository;
-import ru.romanow.jpa.domain.Role;
+import org.springframework.data.repository.CrudRepository
+import ru.romanow.jpa.domain.Role
+import java.util.*
 
-import java.util.Optional;
-
-public interface RoleRepository
-        extends CrudRepository<Role, Integer> {
-    Optional<Role> findByName(String name);
+interface RoleRepository : CrudRepository<Role, Int> {
+    fun findByName(name: String): Optional<Role>
 }

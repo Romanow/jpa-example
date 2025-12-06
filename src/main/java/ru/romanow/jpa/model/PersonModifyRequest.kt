@@ -1,19 +1,11 @@
-package ru.romanow.jpa.model;
+package ru.romanow.jpa.model
 
-import lombok.Data;
-import lombok.experimental.Accessors;
-
-import java.util.List;
-import java.util.Set;
-
-@Data
-@Accessors(chain = true)
-public class PersonModifyRequest {
-    private String firstName;
-    private String middleName;
-    private String lastName;
-    private Integer age;
-    private AddressInfo address;
-    private Set<String> roles;
-    private Set<AuthorityInfo> authorities;
-}
+data class PersonModifyRequest(
+    var firstName: String? = null,
+    var middleName: String? = null,
+    var lastName: String? = null,
+    var age: Int? = null,
+    var address: AddressInfo? = null,
+    var roles: Set<String>? = null,
+    var authorities: Set<AuthorityInfo>? = null
+)

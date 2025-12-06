@@ -1,28 +1,14 @@
-package ru.romanow.jpa.service;
+package ru.romanow.jpa.service
 
-import org.jetbrains.annotations.NotNull;
-import ru.romanow.jpa.model.PersonModifyRequest;
-import ru.romanow.jpa.model.PersonResponse;
+import ru.romanow.jpa.model.PersonModifyRequest
+import ru.romanow.jpa.model.PersonResponse
 
-import java.util.List;
-
-public interface PersonService {
-    @NotNull
-    List<PersonResponse> findAll();
-
-    @NotNull
-    PersonResponse findById(int personId);
-
-    int create(@NotNull PersonModifyRequest request);
-
-    @NotNull
-    PersonResponse update(int personId, @NotNull PersonModifyRequest request);
-
-    @NotNull
-    PersonResponse fullUpdate(int personId, @NotNull PersonModifyRequest request);
-
-    void delete(int personId);
-
-    @NotNull
-    List<PersonResponse> findByAddressId(int addressId);
+interface PersonService {
+    fun findAll(): List<PersonResponse>
+    fun findById(personId: Int): PersonResponse
+    fun create(request: PersonModifyRequest): Int
+    fun update(personId: Int, request: PersonModifyRequest): PersonResponse
+    fun fullUpdate(personId: Int, request: PersonModifyRequest): PersonResponse
+    fun delete(personId: Int)
+    fun findByAddressId(addressId: Int): List<PersonResponse>
 }

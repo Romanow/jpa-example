@@ -1,31 +1,28 @@
-package ru.romanow.jpa.mapper;
+package ru.romanow.jpa.mapper
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.ObjectFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import ru.romanow.jpa.domain.Role;
-import ru.romanow.jpa.mapper.config.MapperConfiguration;
-import ru.romanow.jpa.repository.RoleRepository;
+import org.mapstruct.Mapper
+import org.mapstruct.Mapping
+import org.mapstruct.ObjectFactory
+import org.springframework.beans.factory.annotation.Autowired
+import ru.romanow.jpa.domain.Role
+import ru.romanow.jpa.mapper.config.MapperConfiguration
+import ru.romanow.jpa.repository.RoleRepository
 
-@Mapper(config = MapperConfiguration.class)
-public abstract class RoleMapper {
-
+@Mapper(config = MapperConfiguration::class)
+abstract class RoleMapper {
     @Autowired
-    private RoleRepository roleRepository;
+    private lateinit var roleRepository: RoleRepository
 
-    String toModel(Role role) {
-        return role.getName();
+    fun toModel(role: Role): String? {
+        return role.name
     }
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "name", source = "name")
-    abstract Role toEntity(String name);
+    abstract fun toEntity(name: String?): Role?
 
     @ObjectFactory
-    public Role resolve(String name) {
-        return roleRepository
-                .findByName(name)
-                .orElse(new Role().setName(name));
+    fun resolve(name: String): Role {
+        return roleRepository.findByName(name).orElse(Role(name = name))
     }
 }

@@ -1,27 +1,26 @@
-package ru.romanow.jpa.mapper;
+package ru.romanow.jpa.mapper
 
-import org.mapstruct.*;
-import ru.romanow.jpa.domain.Authority;
-import ru.romanow.jpa.mapper.config.MapperConfiguration;
-import ru.romanow.jpa.mapper.utils.FullUpdate;
-import ru.romanow.jpa.mapper.utils.ReferenceMapper;
-import ru.romanow.jpa.model.AuthorityInfo;
+import org.mapstruct.*
+import org.mapstruct.NullValuePropertyMappingStrategy.IGNORE
+import ru.romanow.jpa.domain.Authority
+import ru.romanow.jpa.mapper.config.MapperConfiguration
+import ru.romanow.jpa.mapper.utils.FullUpdate
+import ru.romanow.jpa.mapper.utils.ReferenceMapper
+import ru.romanow.jpa.model.AuthorityInfo
 
-import static org.mapstruct.NullValuePropertyMappingStrategy.IGNORE;
-
-@Mapper(config = MapperConfiguration.class, uses = ReferenceMapper.class)
-public interface AuthorityMapper {
-    AuthorityInfo toModel(Authority grant);
+@Mapper(config = MapperConfiguration::class, uses = [ReferenceMapper::class])
+interface AuthorityMapper {
+    fun toModel(grant: Authority): AuthorityInfo
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "person", ignore = true)
-    Authority toEntity(AuthorityInfo request);
+    fun toEntity(request: AuthorityInfo): Authority
 
     @InheritConfiguration(name = "toEntity")
     @BeanMapping(nullValuePropertyMappingStrategy = IGNORE)
-    void update(AuthorityInfo request, @MappingTarget Authority authority);
+    fun update(request: AuthorityInfo, @MappingTarget authority: Authority)
 
     @FullUpdate
     @InheritConfiguration(name = "toEntity")
-    void fullUpdate(AuthorityInfo request, @MappingTarget Authority authority);
+    fun fullUpdate(request: AuthorityInfo, @MappingTarget authority: Authority)
 }

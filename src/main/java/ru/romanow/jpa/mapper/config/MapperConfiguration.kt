@@ -1,10 +1,12 @@
-package ru.romanow.jpa.mapper.config;
+package ru.romanow.jpa.mapper.config
 
-import org.mapstruct.MapperConfig;
+import org.mapstruct.InjectionStrategy
+import org.mapstruct.MapperConfig
+import org.mapstruct.ReportingPolicy
 
-import static org.mapstruct.InjectionStrategy.CONSTRUCTOR;
-import static org.mapstruct.ReportingPolicy.ERROR;
-
-@MapperConfig(componentModel = "spring", injectionStrategy = CONSTRUCTOR, unmappedTargetPolicy = ERROR)
-public interface MapperConfiguration {
-}
+@MapperConfig(
+    componentModel = "spring",
+    injectionStrategy = InjectionStrategy.CONSTRUCTOR,
+    unmappedTargetPolicy = ReportingPolicy.ERROR
+)
+interface MapperConfiguration

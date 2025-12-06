@@ -1,11 +1,11 @@
-package ru.romanow.jpa;
+package ru.romanow.jpa
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication
+import org.springframework.boot.runApplication
 
 @SpringBootApplication
-public class JpaExampleApplication {
-    public static void main(String[] args) {
-        SpringApplication.run(JpaExampleApplication.class, args);
-    }
+class JpaExampleApplication
+
+fun main(args: Array<String>) {
+    runApplication<JpaExampleApplication>(*args)
 }
