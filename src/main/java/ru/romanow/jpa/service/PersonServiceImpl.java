@@ -11,7 +11,7 @@ import ru.romanow.jpa.model.PersonModifyRequest;
 import ru.romanow.jpa.model.PersonResponse;
 import ru.romanow.jpa.repository.PersonRepository;
 
-import javax.persistence.EntityNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;

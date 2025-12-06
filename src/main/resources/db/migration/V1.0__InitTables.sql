@@ -1,6 +1,4 @@
 -- V1.0 init person and address table
-
--- ### address ###
 CREATE TABLE address
 (
     id      SERIAL PRIMARY KEY,
@@ -10,7 +8,6 @@ CREATE TABLE address
     address VARCHAR(255) NOT NULL
 );
 
--- ### person ###
 CREATE TABLE person
 (
     id          SERIAL PRIMARY KEY,
@@ -24,7 +21,6 @@ CREATE TABLE person
 
 CREATE INDEX idx_person_address_id ON person (address_id);
 
--- ### role ###
 CREATE TABLE role
 (
     id   SERIAL PRIMARY KEY,
@@ -43,7 +39,6 @@ CREATE TABLE person_roles
 
 CREATE INDEX idx_person_roles_person_id_and_role_id ON person_roles (person_id, role_id);
 
--- ### authority ###
 CREATE TABLE authority
 (
     id        SERIAL PRIMARY KEY,

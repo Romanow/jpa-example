@@ -10,17 +10,8 @@ jobs:
       - uses: actions/setup-java@v3
         with:
           distribution: "corretto"
-          java-version: "17"
+          java-version: "21"
           cache: "gradle"
 
       - name: Build project
-        uses: eskatos/gradle-command-action@v1
-        with:
-          dependencies-cache-enabled: true
-          arguments: clean build
-
-      - name: Test Report
-        uses: mikepenz/action-junit-report@v2
-        if: always()
-        with:
-          report_paths: "**/build/test-results/test/TEST-*.xml"
+        run: ./gradlew clean build

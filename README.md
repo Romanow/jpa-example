@@ -1,13 +1,34 @@
-# JPA example
+[![CI](https://github.com/Romanow/jpa-example/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/Romanow/jpa-example/actions/workflows/build.yml)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![License](https://img.shields.io/github/license/Romanow/jpa-example)](https://github.com/Romanow/jpa-example/blob/main/LICENSE)
 
-[![Build project](https://github.com/Romanow/jpa-example/actions/workflows/build.yaml/badge.svg?branch=master)](https://github.com/Romanow/jpa-example/actions/workflows/build.yaml)
+# MapStruct vs. Hibernate: да придет спаситель!
 
-## Использование Hibernate + JPA
+## Аннотация
 
-##### Настройка JPA spring.jpa.open-in-view=false
+## План
+
+1. Что за настройка `spring.jpa.open-in-view=false` и почему появилась проблема?
+2. Что такое MapStruct, для чего нужна эта библиотека.
+3. Рассматриваем два подхода:
+    * MapStruct как простой перекладчик примитивных типов, вся сложная логика остается в сервисе.
+    * MapStruct выполняет всю работу по преобразованию DTO <-> Entity.
+4. Пример с CRUD операциями над сущностью `Person` в связке с подчиненными сущностями: `Address` (1:1), `Authorities` (
+   1:N), `Roles` (N:N).
+    * GET by ID: Entity -> DTO.
+    * POST (Create new Person): DTO -> create new Entity.
+    * PATCH (Partial Update): DTO -> partial update Entity.
+    * PUT (Full Update): DTO -> full update Entity.
+5. Обсуждаем вопросы тестирования.
+6. Выводы (~~пытаемся сформулировать правила работы с MapStruct~~).
+
+## Доклад
+
+### Настройка JPA spring.jpa.open-in-view=false
 
 > Spring web request interceptor that binds a JPA EntityManager to the thread for the entire processing of the request.
-> Intended for the "Open EntityManager in View" pattern, i.e. to allow for lazy loading in web views despite the original
+> Intended for the "Open EntityManager in View" pattern, i.e. to allow for lazy loading in web views despite the
+> original
 > transactions already being completed.
 
 Класс `OpenEntityManagerInViewInterceptor` в методе `preHandle` открывает `EntityManager` для текущего запроса, т.е.
@@ -18,11 +39,11 @@ Spring создает обрамляющую транзакцию на _весь
 
 Это правильный подход, т.к. он дает контроль над транзакционной целостью запроса.
 
-Если использовать `CrudRepository` (или его наследников), то Spring в runtime в proxy подкладывает
-реализацию `SimpleJpaRepository`, которая помечена аннотацией `@Transasctional(readOnly = true)` на уровне класса, т.е.
-транзакция создается на каждый запрос.
+Если использовать `CrudRepository` (или его наследников), то Spring в runtime в proxy подкладывает реализацию
+`SimpleJpaRepository`, которая помечена аннотацией `@Transasctional(readOnly = true)` на уровне класса, т.е. транзакция
+создается на каждый запрос.
 
-##### В коде используем явное управление транзакциями через `@Transactional`
+### В коде используем явное управление транзакциями через `@Transactional`
 
 Использование транзакций гарантирует:
 
@@ -34,10 +55,10 @@ Spring создает обрамляющую транзакцию на _весь
   транзакции.
 * Долговечность (Durability) – если транзакция завершена, то все данные записаны на диск.
 
-Если в рамках запроса выполняется модификация нескольких таблиц, то без ипользования общей транзакции в случае ошибки
+Если в рамках запроса выполняется модификация нескольких таблиц, то без использования общей транзакции в случае ошибки
 откат изменений не будет выполнен или будет выполнен частично, что приведет к _неконсистентности_ данных.
 
-В PostgreSQL уровень изоляции по-умолчанию Read Committed, т.е. гарантирует отсутствие Lost Updates и Dirty Reads.
+В postgres уровень изоляции по-умолчанию READ COMMITED, т.е. гарантирует отсутствие Lost Updates и Dirty Reads.
 
 Т.к. операции в бизнес сценарии часто подразумевают изменения в нескольких таблицах, то все эти изменения нужно
 заворачивать в единую транзакцию, чтобы достичь консистентности данных.
@@ -64,7 +85,7 @@ Spring создает обрамляющую транзакцию на _весь
 например, User и Wallet, то все классы (web, mappings, models, dao, services), связанные с ними, должны находится в
 отдельном пакете user и wallet соответственно.
 
-```
+```text
 src/
   main/
     java/
@@ -202,11 +223,11 @@ spring.jpa.hibernate.ddl-auto=validate
       по ID из массива получить нужную запись для обновления. Как и в примере выше, с
       помощью `cascade = CascadeType.MERGE` Hibernate выполнит обновление связной сущности при сохранении.
     * Если выполняется полное обновление (метод PUT), то среди существующих записей ищутся все записи по ID из запроса:
-      * найденные записи обновляются (с помощью `cascade = CascadeType.MERGE` Hibernate их обновит);
-      * с отсутствующих о записях убирается связь с главной сущностью и с помощью `orphanRemoval = true` Hibernate их
-        удаляет;
-      * новые сущности, которые есть в запросе, просто создаются и помощью `cascade = CascadeType.MERGE` Hibernate их
-        создаст.
+        * найденные записи обновляются (с помощью `cascade = CascadeType.MERGE` Hibernate их обновит);
+        * с отсутствующих о записях убирается связь с главной сущностью и с помощью `orphanRemoval = true` Hibernate их
+          удаляет;
+        * новые сущности, которые есть в запросе, просто создаются и помощью `cascade = CascadeType.MERGE` Hibernate их
+          создаст.
 
 В случае использования `cascade` нужно в явном виде перечислять
 операции: `{ CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH, CascadeType.DETACH }`. Тип `CascadeType.ALL`
@@ -226,10 +247,10 @@ spring.jpa.hibernate.ddl-auto=validate
 
 ```java
 
-@Target({ METHOD, FIELD })
+@Target({METHOD, FIELD})
 @Retention(RUNTIME)
 public @interface OneToMany {
-    
+
     ...
 
     /**
@@ -302,7 +323,7 @@ public class JpaProperties {
      * thread for the entire processing of the request.
      */
     private Boolean openInView;
-    
+
     ...
 }
 ```
@@ -314,15 +335,15 @@ LazyInitializationException.
 Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is org.hibernate.LazyInitializationException: could not initialize proxy [ru.romanow.jpa.domain.Address#1] - no Session] with root cause
 
 org.hibernate.LazyInitializationException: could not initialize proxy [ru.romanow.jpa.domain.Address#1] - no Session
-	at org.hibernate.proxy.AbstractLazyInitializer.initialize(AbstractLazyInitializer.java:170) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
-	at org.hibernate.proxy.AbstractLazyInitializer.getImplementation(AbstractLazyInitializer.java:310) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
-	at org.hibernate.proxy.pojo.bytebuddy.ByteBuddyInterceptor.intercept(ByteBuddyInterceptor.java:45) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
-	at org.hibernate.proxy.ProxyConfiguration$InterceptorDispatcher.intercept(ProxyConfiguration.java:95) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
-	at ru.romanow.jpa.domain.Address$HibernateProxy$zoO4cARL.getCity(Unknown Source) ~[classes/:na]
-	at ru.romanow.jpa.mapper.AddressMapperImpl.toModel(AddressMapperImpl.java:24) ~[classes/:na]
-	at ru.romanow.jpa.mapper.PersonMapperImpl.toModel(PersonMapperImpl.java:32) ~[classes/:na]
-	at java.base/java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:195) ~[na:na]
-	at java.base/java.util.ArrayList$ArrayListSpliterator.forEachRemaining(ArrayList.java:1654) ~[na:na]
+    at org.hibernate.proxy.AbstractLazyInitializer.initialize(AbstractLazyInitializer.java:170) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
+    at org.hibernate.proxy.AbstractLazyInitializer.getImplementation(AbstractLazyInitializer.java:310) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
+    at org.hibernate.proxy.pojo.bytebuddy.ByteBuddyInterceptor.intercept(ByteBuddyInterceptor.java:45) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
+    at org.hibernate.proxy.ProxyConfiguration$InterceptorDispatcher.intercept(ProxyConfiguration.java:95) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
+    at ru.romanow.jpa.domain.Address$HibernateProxy$zoO4cARL.getCity(Unknown Source) ~[classes/:na]
+    at ru.romanow.jpa.mapper.AddressMapperImpl.toModel(AddressMapperImpl.java:24) ~[classes/:na]
+    at ru.romanow.jpa.mapper.PersonMapperImpl.toModel(PersonMapperImpl.java:32) ~[classes/:na]
+    at java.base/java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:195) ~[na:na]
+    at java.base/java.util.ArrayList$ArrayListSpliterator.forEachRemaining(ArrayList.java:1654) ~[na:na]
     ...
 ```
 
@@ -337,7 +358,7 @@ org.hibernate.LazyInitializationException: could not initialize proxy [ru.romano
 @Service
 @RequiredArgsConstructor
 public class PersonServiceImpl
-        implements PersonService {
+    implements PersonService {
     private final PersonRepository personRepository;
     private final PersonMapper personMapper;
 
@@ -345,9 +366,9 @@ public class PersonServiceImpl
     @Transactional(readOnly = true)
     public List<PersonResponse> findAll() {
         return personRepository.findAll()
-                .stream()
-                .map(personMapper::toModel)
-                .collect(Collectors.toList());
+            .stream()
+            .map(personMapper::toModel)
+            .collect(Collectors.toList());
     }
 }
 ```
@@ -370,7 +391,7 @@ interceptor `$$_hibernate_interceptor: ByteBuddyInterceptor`, который с�
 
 ```java
 public interface PersonRepository
-        extends JpaRepository<Person, Integer> {
+    extends JpaRepository<Person, Integer> {
 
     @Query("select p from Person p join fetch p.address")
     List<Person> findPersonAndAddress();
@@ -379,16 +400,16 @@ public interface PersonRepository
 @Service
 @RequiredArgsConstructor
 public class PersonServiceImpl
-        implements PersonService {
+    implements PersonService {
     private final PersonRepository personRepository;
     private final PersonMapper personMapper;
 
     @Override
     public List<PersonResponse> findAll() {
         return personRepository.findPersonAndAddress()
-                .stream()
-                .map(personMapper::toModel)
-                .collect(Collectors.toList());
+            .stream()
+            .map(personMapper::toModel)
+            .collect(Collectors.toList());
     }
 }
 ```
@@ -409,7 +430,7 @@ public class Person {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
     private Address address;
-    
+
     ...
 }
 ```
@@ -419,7 +440,7 @@ Address.
 
 ```java
 public interface PersonRepository
-        extends JpaRepository<Person, Integer> {
+    extends JpaRepository<Person, Integer> {
 
     @EntityGraph(attributePaths = "address")
     @Query("select p from Person p")
@@ -429,16 +450,16 @@ public interface PersonRepository
 @Service
 @RequiredArgsConstructor
 public class PersonServiceImpl
-        implements PersonService {
+    implements PersonService {
     private final PersonRepository personRepository;
     private final PersonMapper personMapper;
 
     @Override
     public List<PersonResponse> findAll() {
         return personRepository.findAllUsingGraph()
-                .stream()
-                .map(personMapper::toModel)
-                .collect(Collectors.toList());
+            .stream()
+            .map(personMapper::toModel)
+            .collect(Collectors.toList());
     }
 }
 ```
@@ -462,7 +483,7 @@ public class Person {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
     private Address address;
-    
+
     ...
 }
 ```
@@ -475,10 +496,9 @@ select u.name from User u where u.addressId = :addressId
 
 ```shell
 # сборка проекта
-$ ./gradlew clean build
+$ ./gradlew bootRun --
 
-# запуск postgres 13 в docker
-$ docker compose up -d
+$ docker compose up -d --wait
 
 # запуск приложения
 $ ./gradlew bootRun
@@ -487,7 +507,30 @@ $ ./gradlew bootRun
 $ curl http://localhost:8080/api/v1/persons -v | jq
 ```
 
-### Авторы
+### Особенности реализации
 
-* Романов Алексей (tg: @romanowalex)
-* Жегалов Андрей (tg: @zhegalovandrey)
+1. `@EntityGraph` по-умолчанию `type = EntityGraphType.FETCH`, это значит что описанные сущности Hibernate поднимает как
+   EAGER, а все остальные считает как LAZY (даже если в `@Entity` они описаны как EAGER). `EntityGraphType.LOAD` берет
+   из описания `@Entity`.
+2. `@EntityGraph` игнорирует `@Fetch(FetchMode.SUBSELECT)` и все поднимает через JOIN.
+3. `@JoinColumn` на `@OneToMany`/`@ManyToOne` определяет главную сущность. Без этого не будет работать связывание
+   объектов с родительской сущностью при добавлении в массив `@OneToMany`, т.е. будет:
+
+    ```
+    Hibernate:
+        insert into authority (id, name, person_id, priority) values (null, ?, ?, ?)
+    2022-02-14 15:33:16.790 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [IItm]
+    2022-02-14 15:33:16.790 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [2] as [INTEGER] - [null]
+    2022-02-14 15:33:16.790 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [3] as [INTEGER] - [2]
+    ...
+    Hibernate:
+        updateauthority set person_id=? where id=?
+    2022-02-14 15:33:16.828 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [INTEGER] - [1]
+    2022-02-14 15:33:16.828 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [2] as [INTEGER] - [1]
+    ```
+4. Для удаления старых записей при обновлении объекта `@OneToMany` нужно сделать:
+
+    ```jshelllanguage
+    person.getAuthorities().clear();
+    person.getAuthorities().addAll(newAuthorities);
+    ```

@@ -1,9 +1,10 @@
 plugins {
     id "java"
     id "idea"
-    id "org.springframework.boot" version "2.7.6"
-    id "io.spring.dependency-management" version "1.0.11.RELEASE"
-    id "com.adarshr.test-logger" version "3.2.0"
+    id "org.springframework.boot" version "3.5.7"
+    id "com.gorylenko.gradle-git-properties" version "2.4.2"
+    id "com.adarshr.test-logger" version "4.0.0"
+    id "io.spring.dependency-management" version "1.1.7"
 }
 
 idea {
@@ -14,13 +15,20 @@ idea {
 }
 
 ext {
-    gsonVersion = "2.9.0"
-    mapstructVersion = "1.5.3.Final"
+    springBootVersion = "3.5.7"
+    mapstructVersion = "1.6.3"
     jetbrainsAnnotationsVersion = "22.0.0"
+    postgresContainerVersion = "1.21.3"
 }
 
 repositories {
     mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.boot:spring-boot-dependencies:$springBootVersion"
+    }
 }
 
 dependencies {
@@ -30,7 +38,7 @@ dependencies {
     implementation "org.springframework.boot:spring-boot-starter-actuator"
 
     implementation "org.postgresql:postgresql"
-    implementation "org.flywaydb:flyway-core"
+    implementation "org.flywaydb:flyway-database-postgresql"
 
     implementation "org.jetbrains:annotations:$jetbrainsAnnotationsVersion"
     implementation "org.mapstruct:mapstruct:$mapstructVersion"
@@ -40,10 +48,24 @@ dependencies {
     annotationProcessor "org.projectlombok:lombok"
     annotationProcessor "org.mapstruct:mapstruct-processor:$mapstructVersion"
 
-    testImplementation "com.h2database:h2"
-    testImplementation "com.google.code.gson:gson:$gsonVersion"
     testImplementation "org.springframework.boot:spring-boot-starter-test"
+    testImplementation "org.springframework.boot:spring-boot-testcontainers"
+    testImplementation "org.testcontainers:postgresql:$postgresContainerVersion"
 }
+
+processResources {
+    filesMatching(["**/properties-from-gradle.properties"]) {
+        expand(project.properties)
+    }
+}
+
+gitProperties {
+    dateFormat = "dd.MM.yyyy HH:mm:ss"
+    dateFormatTimeZone = "Europe/Moscow"
+    extProperty = "gitProps"
+}
+
+generateGitProperties.outputs.upToDateWhen { false }
 
 test {
     useJUnitPlatform()
@@ -58,4 +80,13 @@ testlogger {
 
 bootJar {
     archiveFileName = "${project.name}.jar"
+    manifest {
+        attributes(
+            "Application-Name": "${rootProject.name}",
+            "Application-Version": "${project.version}",
+            "Git-Branch": "${-> project.ext.gitProps["git.branch"]}",
+            "Build-Revision": "${-> project.ext.gitProps["git.commit.id.abbrev"]}",
+            "Commit-Time": "${-> project.ext.gitProps["git.commit.time"]}"
+        )
+    }
 }

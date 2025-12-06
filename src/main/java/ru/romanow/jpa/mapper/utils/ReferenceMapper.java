@@ -6,8 +6,8 @@ import org.mapstruct.TargetType;
 import org.springframework.stereotype.Component;
 import ru.romanow.jpa.model.IdentifiableModel;
 
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @Component
 public class ReferenceMapper {
