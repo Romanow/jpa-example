@@ -7,36 +7,71 @@
 
 ## Аннотация
 
-Наверняка вы много раз сталкивались с тем, что при работе Hibernate вам приходилось писать много кода по перекладыванию
-из `@Entity` в DTO и обратно. Это громоздкий некрасивый boilerplate код, к тому же подверженный ошибкам. И вот, казалось
-бы появился спаситель – MapStruct! С помощью codegen он забирает на себя всю рутинную работу по перекладке, а вы лишь
-вызываете готовый метод. Но так ли все просто и радужно? В докладе поговорим про сложные случаи, когда нам надо
-создавать и обновлять сущности, имеющие связи на другие объекты.
+В мире Spring Boot и Hibernate разработчики часто сталкиваются с необходимостью маппинга между сущностями и DTO, что
+приводит к большому количеству шаблонного кода. MapStruct предлагает элегантное решение через кодогенерацию, но его
+использование в проектах со сложными связями между сущностями требует глубокого понимания. В докладе мы разберем, как
+правильно интегрировать MapStruct, управлять транзакциями и каскадными операциями, а также оптимизировать загрузку
+связей. Вы узнаете практические приемы, которые помогут избежать типичных ошибок и повысить эффективность вашего кода.
 
 ## План
 
-1. Что за настройка `spring.jpa.open-in-view=false` и почему появилась проблема?
-2. Что такое MapStruct, для чего нужна эта библиотека.
-3. Рассматриваем два подхода:
-    * MapStruct как простой перекладчик примитивных типов, вся сложная логика остается в сервисе.
-    * MapStruct выполняет всю работу по преобразованию DTO <-> Entity.
-4. Пример с CRUD операциями над сущностью `Person` в связке с подчиненными сущностями: `Address` (1:1), `Authorities` (
-   1:N), `Roles` (N:N).
-    * GET by ID: Entity -> DTO.
-    * POST (Create new Person): DTO -> create new Entity.
-    * PATCH (Partial Update): DTO -> partial update Entity.
-    * PUT (Full Update): DTO -> full update Entity.
-5. Обсуждаем вопросы тестирования.
-6. Выводы (~~пытаемся сформулировать правила работы с MapStruct~~).
+1. Что пытаемся решить: зачем нужны DTO и проблема boilerplate-кода в Hibernate.
+2. Архитектурный фундамент: `spring.jpa.open-in-view` и управление транзакциями: где и как правильно
+   использовать `@Transactional`.
+3. Библиотека MapStruct: принцип работы, преимущесва и ограничения.
+4. Два подхода к интеграции MapStruct:
+    * MapStruct как _тупой_ перекладчик примитивных полей (сложная логика в сервисе).
+    * MapStruct как полноценный инструмент для преобразования DTO <--> Entity с поддержкой связей.
+5. Практический пример: CRUD для сущности `Person` со
+   связями  `@OneToOne` (`Address`), `@OneToMany` (`Authorities`), `@ManyToMany` (`Roles`).
+6. Оптимизация загрузки связей: от `LazyInitializationException` к эффективным запросам (`join fetch` и `@EntityGraph`).
+   Проблема загрузки N+1.
+7. Каскадные операции в Hibernate и управление состоянием сущностей.
+8. Выводы: собираем правила работы с MapStruct в проектах Spring Boot и Hibernate.
 
 ## Доклад
 
-### Настройка JPA spring.jpa.open-in-view=false
+### Миграция структуры БД
+
+Автогенерация DDL занимает много времени, т.к. Hibernate через метаинформацию вытягивает структуру БД и сравнивает ее с
+описанием в `@Entity`.
+
+Правильным и контролируемым подходом для работы со схемой базы данных являются скрипты миграции. Для Java есть два
+основных инструмента:
+
+* [Flyway](https://flywaydb.org/documentation/usage/plugins/springboot), интеграция со Spring
+  Boot [Use a Higher-level Database Migration Tool](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto.data-initialization.migration-tool)
+  .
+* [Liquibase](https://liquibase.org/get-started/quickstart), интеграция со Spring
+  Boot [Using Liquibase with Spring Boot](https://docs.liquibase.com/tools-integrations/springboot/springboot.html).
+
+Liquibase более мощный инструмент, например он умеет делать rollback изменений или импорт данных из CSV, но описание
+миграций в нем реализуется через XML (основной вариант), что приносит некоторые неудобства.
+
+Для production среды нужно _полностью_ выключить генерацию DDL.
+
+```yaml
+spring:
+    jpa:
+        generate-ddl: false
+        hibernate.ddl-auto: none
+```
+
+Для тестовых сред возможно использовать уровень `validate`, чтобы гарантировать консистентность схемы БД и
+описания `@Entity`.
+
+```yaml
+spring:
+    jpa:
+        generate-ddl: false
+        hibernate.ddl-auto: validate
+```
+
+### Настройка spring.jpa.open-in-view=false
 
 > Spring web request interceptor that binds a JPA EntityManager to the thread for the entire processing of the request.
 > Intended for the "Open EntityManager in View" pattern, i.e. to allow for lazy loading in web views despite the
-> original
-> transactions already being completed.
+> original transactions already being completed.
 
 Класс `OpenEntityManagerInViewInterceptor` в методе `preHandle` открывает `EntityManager` для текущего запроса, т.е.
 Spring создает обрамляющую транзакцию на _весь_ запрос.
@@ -50,7 +85,178 @@ Spring создает обрамляющую транзакцию на _весь
 `SimpleJpaRepository`, которая помечена аннотацией `@Transasctional(readOnly = true)` на уровне класса, т.е. транзакция
 создается на каждый запрос.
 
-### В коде используем явное управление транзакциями через `@Transactional`
+Параметр `spring.jpa.open-in-view` маппируется в класс `JpaProperties`.
+
+```java
+
+@ConfigurationProperties(prefix = "spring.jpa")
+public class JpaProperties {
+    // ...
+
+    /**
+     * Register OpenEntityManagerInViewInterceptor. Binds a JPA EntityManager to the
+     * thread for the entire processing of the request.
+     */
+    private Boolean openInView;
+
+    // ...
+}
+```
+
+Если выключаем `spring.jpa.open-in-view=false`, тогда при запросе `GET http://localhost:8080/` получаем
+LazyInitializationException.
+
+```
+Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is org.hibernate.LazyInitializationException: could not initialize proxy [ru.romanow.jpa.domain.Address#1] - no Session] with root cause
+
+org.hibernate.LazyInitializationException: could not initialize proxy [ru.romanow.jpa.domain.Address#1] - no Session
+    at org.hibernate.proxy.AbstractLazyInitializer.initialize(AbstractLazyInitializer.java:170) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
+    at org.hibernate.proxy.AbstractLazyInitializer.getImplementation(AbstractLazyInitializer.java:310) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
+    at org.hibernate.proxy.pojo.bytebuddy.ByteBuddyInterceptor.intercept(ByteBuddyInterceptor.java:45) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
+    at org.hibernate.proxy.ProxyConfiguration$InterceptorDispatcher.intercept(ProxyConfiguration.java:95) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
+    at ru.romanow.jpa.domain.Address$HibernateProxy$zoO4cARL.getCity(Unknown Source) ~[classes/:na]
+    at ru.romanow.jpa.mapper.AddressMapperImpl.toModel(AddressMapperImpl.java:24) ~[classes/:na]
+    at ru.romanow.jpa.mapper.PersonMapperImpl.toModel(PersonMapperImpl.java:32) ~[classes/:na]
+    at java.base/java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:195) ~[na:na]
+    at java.base/java.util.ArrayList$ArrayListSpliterator.forEachRemaining(ArrayList.java:1654) ~[na:na]
+    ...
+```
+
+#### Использование `@Transactional` в сервисном слое
+
+Если метод в сервисе пометить аннотацией `@Transactional`, тогда подзапросы будут выполняться в рамках сессии:
+
+```java
+
+@Service
+@RequiredArgsConstructor
+public class PersonServiceImpl
+    implements PersonService {
+    private final PersonRepository personRepository;
+    private final PersonMapper personMapper;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PersonResponse> findAll() {
+        return personRepository.findAll()
+            .stream()
+            .map(personMapper::toModel)
+            .collect(Collectors.toList());
+    }
+}
+```
+
+При этом сначала будет поднята сущность Person, а поле address будет HibernateProxy, который при первом обращении к
+сущности выполнит дополнительный запрос к базе данных и поднимет Address по ID.
+
+![Hibernate Interceptor](images/hibernate_interceptor.png)
+
+При LAZY инициализации сущности, по ссылке на объект хранится Hibernate Proxy, который реализован с помощью библиотеки
+ByteBuddy. При обращении к методу `person.getAddress()` срабатывает method
+interceptor `$$_hibernate_interceptor: ByteBuddyInterceptor`, который содержит всю необходимую информацию для выполнения
+запроса к БД. После первого запроса внутри Hibernate Proxy заполняется поле `target` и уже все последующие запросы к
+сущности делегируются к этому полю.
+
+#### Использование `@Query` и конструкции join fetch
+
+Если в запросе указать `join fetch` (вместо просто `join`), то Hibernate в блок `select` включит поля из `join` и
+размапит результат в связанную сущность.
+
+```java
+public interface PersonRepository
+    extends JpaRepository<Person, Integer> {
+
+    @Query("select p from Person p join fetch p.address")
+    List<Person> findPersonAndAddress();
+}
+
+@Service
+@RequiredArgsConstructor
+public class PersonServiceImpl
+    implements PersonService {
+    private final PersonRepository personRepository;
+    private final PersonMapper personMapper;
+
+    @Override
+    public List<PersonResponse> findAll() {
+        return personRepository.findPersonAndAddress()
+            .stream()
+            .map(personMapper::toModel)
+            .collect(Collectors.toList());
+    }
+}
+```
+
+### Использовать EntityGraph для конкретного метода
+
+Начиная с версии JPA 2.1 появилась конструкция `@EntityGraph`, с помощью которой можно переопределять порядок загрузки
+сущностей, описанных в `@Entity`. Т.е. если в `@Entity` описано:
+
+```java
+
+@Entity
+@Table(name = "person")
+public class Person {
+
+    // ...
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
+    private Address address;
+
+    // ...
+}
+```
+
+а в запросе указано `@EntityGraph(attributePaths = "address")`, то в едином запросе будет подняты сущности Person и
+Address.
+
+```java
+public interface PersonRepository
+    extends JpaRepository<Person, Integer> {
+
+    @EntityGraph(attributePaths = "address")
+    @Query("select p from Person p")
+    List<Person> findAllUsingGraph();
+}
+
+@Service
+@RequiredArgsConstructor
+public class PersonServiceImpl
+    implements PersonService {
+    private final PersonRepository personRepository;
+    private final PersonMapper personMapper;
+
+    @Override
+    public List<PersonResponse> findAll() {
+        return personRepository.findAllUsingGraph()
+            .stream()
+            .map(personMapper::toModel)
+            .collect(Collectors.toList());
+    }
+}
+```
+
+1. `@EntityGraph` по-умолчанию `type = EntityGraphType.FETCH`, это значит что описанные сущности Hibernate поднимает как
+   EAGER, а все остальные считает как LAZY (даже если в `@Entity` они описаны как EAGER). `EntityGraphType.LOAD` берет
+   из описания `@Entity`.
+2. `@EntityGraph` игнорирует `@Fetch(FetchMode.SUBSELECT)` и все поднимает через JOIN.
+3. `@JoinColumn` на `@OneToMany`/`@ManyToOne` определяет главную сущность. Без этого не будет работать связывание
+   объектов с родительской сущностью при добавлении в массив `@OneToMany`, т.е. будет:
+    ```text
+    Hibernate:
+        insert into authority (id, name, person_id, priority) values (null, ?, ?, ?)
+    2022-02-14 15:33:16.790 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [IItm]
+    2022-02-14 15:33:16.790 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [2] as [INTEGER] - [null]
+    2022-02-14 15:33:16.790 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [3] as [INTEGER] - [2]
+    ...
+    Hibernate:
+        updateauthority set person_id=? where id=?
+    2022-02-14 15:33:16.828 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [INTEGER] - [1]
+    2022-02-14 15:33:16.828 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [2] as [INTEGER] - [1]
+    ```
+
+### Управление транзакциями через `@Transactional`
 
 Использование транзакций гарантирует:
 
@@ -141,39 +347,37 @@ src/
 в реализации этой аннотации не будет, то по факту транзакция создастся (т.к. Spring увидит `@Transactional` в
 интерфейсе), но по коду это будет неочевидно.
 
-##### Использование автогенерации схем данных JPA в прод среде запрещено
+#### Выполнение внешних вызовов из сервиса, помеченного `@Transcational`
 
-Автогенерация DDL занимает много времени, т.к. Hibernate через метаинформацию вытягивает структуру БД и сравнивает ее с
-описанием в `@Entity`.
+##### REST запрос
 
-Правильным и контролируемым подходом для работы со схемой базы данных являются скрипты миграции. Для Java есть два
-основных инструмента:
+Если в рамках бизнес операции, реализуемой в методе на уровне сервиса, присутствует вызов ко внешней системе (HTTP
+запрос, gRPC и т.п.), то заворачивать этот метод в транзакцию не стоит, т.к. транзакция будет ждать завершения всей
+операции.
 
-* [Flyway](https://flywaydb.org/documentation/usage/plugins/springboot), интеграция со Spring
-  Boot [Use a Higher-level Database Migration Tool](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#howto.data-initialization.migration-tool)
-  .
-* [Liquibase](https://liquibase.org/get-started/quickstart), интеграция со Spring
-  Boot [Using Liquibase with Spring Boot](https://docs.liquibase.com/tools-integrations/springboot/springboot.html).
+С другой стороны это удобно, т.к. в случае негативного ответа 4xx/5xx будет выброшен exception и вся транзакция
+откатится. Этот подход можно использовать только если есть _маленький_ таймаут (200-300ms) на завершение внешнего
+вызова. В PostgreSQL работа с транзакциями реализуется с помощью версионирования (snapshot), это не блокирует
+параллельные транзакции, но может привести к rollback в случае если данные были модифицированы в рамках другой ранее
+завершенной транзакции.
 
-Liquibase более мощный инструмент, например он умеет делать rollback изменений или импорт данных из CSV, но описание
-миграций в нем реализуется через XML, что приносит некоторые неудобства.
+Если время работы внешнего вызова не фиксировано или большое, то его нужно делать вне транзакции, т.е. мы разбиваем нашу
+бизнес-операцию на две транзакционные части, а внешний вызов выполняется между этими транзакциями. Таким образом, если
+вызов завершился с ошибкой 4xx/5xx, то мы должны _руками_ откатить изменения в первой части бизнес операции.
 
-Для production среды нужно _полностью_ выключить генерацию DDL.
+##### Отправка данных через очередь
 
-```properties
-spring.jpa.generate-ddl=false
-spring.jpa.hibernate.ddl-auto=none
-```
+Очередь является инструментом асинхронного взаимодействия. Если в рамках бизнес операции требуется отправить данные в
+очередь, то если эта операция выполняется в рамках транзакции, может произойти ситуация, что получатель
+(consumer) получит заявку до того момента, как на отправителе (producer) завершится транзакция, что может привести к
+неконсистентным данным между отправителем и получаетелем в момент выполнения операции.
 
-Для тестовых сред возможно использовать уровень `validate`, чтобы гарантировать консистентность схемы БД и
-описания `@Entity`.
+Для решения этой ситуации можно следовать подходу, описанному выше: выносить отправку данных из транзакции, либо в
+заявку, отправляемую в очередь, класть все данные, чтобы получателю не было необходимости приходить за дополнительной
+информацией к отправителю. Но здесь стоит помнить, что очередь не предназначена для отправки больших объемов данных:
+сообщение в 5-10Kb – ОК, а вот файл или json размером в 1Mb уже плохо.
 
-```properties
-spring.jpa.generate-ddl=true
-spring.jpa.hibernate.ddl-auto=validate
-```
-
-##### Применять тип загрузки FetchType.LAZY
+### Использование FetchType.LAZY для загрузки связных сущностей
 
 Существуют 4 типа связей сущностей в Hibernate:
 
@@ -193,9 +397,7 @@ spring.jpa.hibernate.ddl-auto=validate
 выброшен `LazyInitializationException` (подробнее в примерах). Для предотвращения такой ситуации нужно явно использовать
 транзакции и (или) использовать `join fetch` и `@EntityGraph` в случае, когда эти данные нужны в получаемом результате.
 
-### Пояснения и комментарии
-
-#### Использование MapStruct
+### Использование MapStruct
 
 Отдавать в ответе сервиса сущность `@Entity` очень плохая практика, т.к. это приводит к некотролируемому поведению
 приложения. Создают специальные сущности, именуемые DTO (Data Transfer Object), которые служат моделями для запросов /
@@ -258,8 +460,6 @@ spring.jpa.hibernate.ddl-auto=validate
 @Retention(RUNTIME)
 public @interface OneToMany {
 
-    ...
-
     /**
      * (Optional) Whether to apply the remove operation to entities that have
      * been removed from the relationship and to cascade the remove operation to
@@ -269,7 +469,7 @@ public @interface OneToMany {
 }
 ```
 
-##### Правила работы с Mapper
+### Правила работы с Mapper
 
 * Для связи мапперов использовать `uses`: `@Mapper(uses = { AddressMapper.class }`.
 * Если ваше приложение написано на Spring Boot, то мапперы тоже должны быть под управлением
@@ -285,193 +485,7 @@ public @interface OneToMany {
 * Полезно использовать `@Mapper(unmappedTargetPolicy = ReportingPolicy.ERROR)`, а все неиспользуемые поля в маппинге
   явно указывать через `ignore = true`. Это позволит не пропустить поля в итоговом объекте.
 
-#### Выполнение внешних вызовов из сервиса, помеченного `@Transcational`
-
-##### REST запрос
-
-Если в рамках бизнес операции, реализуемой в методе на уровне сервиса, присутствует вызов ко внешней системе (HTTP
-запрос, gRPC и т.п.), то заворачивать этот метод в транзакцию не стоит, т.к. транзакция будет ждать завершения всей
-операции.
-
-С другой стороны это удобно, т.к. в случае негативного ответа 4xx/5xx будет выброшен exception и вся транзакция
-откатится. Этот подход можно использовать только если есть _маленький_ таймаут (200-300ms) на завершение внешнего
-вызова. В PostgreSQL работа с транзакциями реализуется с помощью версионирования (snapshot), это не блокирует
-параллельные транзакции, но может привести к rollback в случае если данные были модифицированы в рамках другой ранее
-завершенной транзакции.
-
-Если время работы внешнего вызова не фиксировано или большое, то его нужно делать вне транзакции, т.е. мы разбиваем нашу
-бизнес-операцию на две транзакционные части, а внешний вызов выполняется между этими транзакциями. Таким образом, если
-вызов завершился с ошибкой 4xx/5xx, то мы должны _руками_ откатить изменения в первой части бизнес операции.
-
-##### Отправка данных через очередь
-
-Очередь является инструментом асинхронного взаимодействия. Если в рамках бизнес операции требуется отправить данные в
-очередь, то если эта операция выполняется в рамках транзакции, может произойти ситуация, что получатель
-(consumer) получит заявку до того момента, как на отправителе (producer) завершится транзакция, что может привести к
-неконсистентным данным между отправителем и получаетелем в момент выполнения операции.
-
-Для решения этой ситуации можно следовать подходу, описанному выше: выносить отправку данных из транзакции, либо в
-заявку, отправляемую в очередь, класть все данные, чтобы получателю не было необходимости приходить за дополнительной
-информацией к отправителю. Но здесь стоит помнить, что очередь не предназначена для отправки больших объемов данных:
-сообщение в 5-10Kb – ОК, а вот файл или json размером в 1Mb уже плохо.
-
-## Примеры
-
-Параметр `spring.jpa.open-in-view` маппируется в класс `JpaProperties`.
-
-```java
-
-@ConfigurationProperties(prefix = "spring.jpa")
-public class JpaProperties {
-    ...
-
-    /**
-     * Register OpenEntityManagerInViewInterceptor. Binds a JPA EntityManager to the
-     * thread for the entire processing of the request.
-     */
-    private Boolean openInView;
-
-    ...
-}
-```
-
-Если выключаем `spring.jpa.open-in-view=false`, тогда при запросе `GET http://localhost:8080/` получаем
-LazyInitializationException.
-
-```
-Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is org.hibernate.LazyInitializationException: could not initialize proxy [ru.romanow.jpa.domain.Address#1] - no Session] with root cause
-
-org.hibernate.LazyInitializationException: could not initialize proxy [ru.romanow.jpa.domain.Address#1] - no Session
-    at org.hibernate.proxy.AbstractLazyInitializer.initialize(AbstractLazyInitializer.java:170) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
-    at org.hibernate.proxy.AbstractLazyInitializer.getImplementation(AbstractLazyInitializer.java:310) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
-    at org.hibernate.proxy.pojo.bytebuddy.ByteBuddyInterceptor.intercept(ByteBuddyInterceptor.java:45) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
-    at org.hibernate.proxy.ProxyConfiguration$InterceptorDispatcher.intercept(ProxyConfiguration.java:95) ~[hibernate-core-5.4.32.Final.jar:5.4.32.Final]
-    at ru.romanow.jpa.domain.Address$HibernateProxy$zoO4cARL.getCity(Unknown Source) ~[classes/:na]
-    at ru.romanow.jpa.mapper.AddressMapperImpl.toModel(AddressMapperImpl.java:24) ~[classes/:na]
-    at ru.romanow.jpa.mapper.PersonMapperImpl.toModel(PersonMapperImpl.java:32) ~[classes/:na]
-    at java.base/java.util.stream.ReferencePipeline$3$1.accept(ReferencePipeline.java:195) ~[na:na]
-    at java.base/java.util.ArrayList$ArrayListSpliterator.forEachRemaining(ArrayList.java:1654) ~[na:na]
-    ...
-```
-
-### Способы исправления
-
-##### Использование `@Transactional` в сервисном слое
-
-Если метод в сервисе пометить аннотацией `@Transactional`, тогда подзапросы будут выполняться в рамках сессии:
-
-```java
-
-@Service
-@RequiredArgsConstructor
-public class PersonServiceImpl
-    implements PersonService {
-    private final PersonRepository personRepository;
-    private final PersonMapper personMapper;
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<PersonResponse> findAll() {
-        return personRepository.findAll()
-            .stream()
-            .map(personMapper::toModel)
-            .collect(Collectors.toList());
-    }
-}
-```
-
-При этом сначала будет поднята сущность Person, а поле address будет HibernateProxy, который при первом обращении к
-сущности выполнит дополнительный запрос к базе данных и поднимет Address по ID.
-
-![Hibernate Interceptor](images/hibernate_interceptor.png)
-
-При LAZY инициализации сущности, по ссылке на объект хранится Hibernate Proxy, который реализован с помощью библиотеки
-ByteBuddy. При обращении к методу `person.getAddress()` срабатывает method
-interceptor `$$_hibernate_interceptor: ByteBuddyInterceptor`, который содержит всю необходимую информацию для выполнения
-запроса к БД. После первого запроса внутри Hibernate Proxy заполняется поле `target` и уже все последующие запросы к
-сущности делегируются к этому полю.
-
-##### Использование `@Query` и конструкции join fetch
-
-Если в запросе указать `join fetch` (вместо просто `join`), то Hibernate в блок `select` включит поля из `join` и
-размапит результат в связанную сущность.
-
-```java
-public interface PersonRepository
-    extends JpaRepository<Person, Integer> {
-
-    @Query("select p from Person p join fetch p.address")
-    List<Person> findPersonAndAddress();
-}
-
-@Service
-@RequiredArgsConstructor
-public class PersonServiceImpl
-    implements PersonService {
-    private final PersonRepository personRepository;
-    private final PersonMapper personMapper;
-
-    @Override
-    public List<PersonResponse> findAll() {
-        return personRepository.findPersonAndAddress()
-            .stream()
-            .map(personMapper::toModel)
-            .collect(Collectors.toList());
-    }
-}
-```
-
-##### Использовать EntityGraph для конкретного метода
-
-Начиная с версии JPA 2.1 появилась конструкция `@EntityGraph`, с помощью которой можно переопределять порядок загрузки
-сущностей, описанных в `@Entity`. Т.е. если в `@Entity` описано:
-
-```java
-
-@Entity
-@Table(name = "person")
-public class Person {
-
-    ...
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
-    private Address address;
-
-    ...
-}
-```
-
-а в запросе указано `@EntityGraph(attributePaths = "address")`, то в едином запросе будет подняты сущности Person и
-Address.
-
-```java
-public interface PersonRepository
-    extends JpaRepository<Person, Integer> {
-
-    @EntityGraph(attributePaths = "address")
-    @Query("select p from Person p")
-    List<Person> findAllUsingGraph();
-}
-
-@Service
-@RequiredArgsConstructor
-public class PersonServiceImpl
-    implements PersonService {
-    private final PersonRepository personRepository;
-    private final PersonMapper personMapper;
-
-    @Override
-    public List<PersonResponse> findAll() {
-        return personRepository.findAllUsingGraph()
-            .stream()
-            .map(personMapper::toModel)
-            .collect(Collectors.toList());
-    }
-}
-```
-
-##### Использование `@Column` при поиске по ID поля, помеченного `@ManyToOne`
+### Использование `@Column` при поиске по ID поля, помеченного `@ManyToOne`
 
 Если для запросов сущностей, помеченных `@ManyToOne` нужно поднять сущность по ID, то можно рядом с `@ManyToOne` описать
 сам ID:
@@ -482,7 +496,7 @@ public class PersonServiceImpl
 @Table(name = "person")
 public class Person {
 
-    ...
+    // ...
 
     @Column(name = "address_id", updatable = false, insertable = false)
     private Integer addressId;
@@ -491,7 +505,7 @@ public class Person {
     @JoinColumn(name = "address_id", foreignKey = @ForeignKey(name = "fk_person_address_id"))
     private Address address;
 
-    ...
+    // ...
 }
 ```
 
@@ -502,42 +516,7 @@ select u.name from User u where u.addressId = :addressId
 ### Запуск приложения
 
 ```shell
-# сборка проекта
-$ ./gradlew bootRun --
-
 $ docker compose up -d --wait
-
-# запуск приложения
-$ ./gradlew bootRun
-
-# выполняем запрос
+$ ./gradlew bootRun --args='--spring.profiles.active=local'
 $ curl http://localhost:8080/api/v1/persons -v | jq
 ```
-
-### Особенности реализации
-
-1. `@EntityGraph` по-умолчанию `type = EntityGraphType.FETCH`, это значит что описанные сущности Hibernate поднимает как
-   EAGER, а все остальные считает как LAZY (даже если в `@Entity` они описаны как EAGER). `EntityGraphType.LOAD` берет
-   из описания `@Entity`.
-2. `@EntityGraph` игнорирует `@Fetch(FetchMode.SUBSELECT)` и все поднимает через JOIN.
-3. `@JoinColumn` на `@OneToMany`/`@ManyToOne` определяет главную сущность. Без этого не будет работать связывание
-   объектов с родительской сущностью при добавлении в массив `@OneToMany`, т.е. будет:
-
-    ```
-    Hibernate:
-        insert into authority (id, name, person_id, priority) values (null, ?, ?, ?)
-    2022-02-14 15:33:16.790 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [VARCHAR] - [IItm]
-    2022-02-14 15:33:16.790 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [2] as [INTEGER] - [null]
-    2022-02-14 15:33:16.790 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [3] as [INTEGER] - [2]
-    ...
-    Hibernate:
-        updateauthority set person_id=? where id=?
-    2022-02-14 15:33:16.828 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [1] as [INTEGER] - [1]
-    2022-02-14 15:33:16.828 TRACE 79689 --- [           main] o.h.type.descriptor.sql.BasicBinder      : binding parameter [2] as [INTEGER] - [1]
-    ```
-4. Для удаления старых записей при обновлении объекта `@OneToMany` нужно сделать:
-
-    ```jshelllanguage
-    person.getAuthorities().clear();
-    person.getAuthorities().addAll(newAuthorities);
-    ```
