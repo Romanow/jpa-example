@@ -1,5 +1,6 @@
 [![CI](https://github.com/Romanow/jpa-example/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/Romanow/jpa-example/actions/workflows/build.yml)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+[![codecov](https://codecov.io/gh/Romanow/jpa-example/branch/master/graph/badge.svg?token=GAgfCC3WDQ)](https://codecov.io/gh/Romanow/jpa-example)
 [![License](https://img.shields.io/github/license/Romanow/jpa-example)](https://github.com/Romanow/jpa-example/blob/main/LICENSE)
 
 # MapStruct vs. Hibernate: да придет спаситель!
